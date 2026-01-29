@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Открыть приложение в Chrome (с отладкой)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/app",
+      "sourceMaps": true
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Chrome: приложение + панель разработчика",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/app",
+      "sourceMaps": true,
+      "devTools": true
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sergey Romakhin\'s Poker Trainer</string>
+    <string name="title_activity_main">Sergey Romakhin\'s Poker Trainer</string>
+    <string name="package_name">com.poker.assistant</string>
+    <string name="custom_url_scheme">com.poker.assistant</string>
+</resources>
