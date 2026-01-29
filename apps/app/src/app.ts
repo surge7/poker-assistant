@@ -12,6 +12,10 @@ import {
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = ['s', 'h', 'd', 'c'];
 
+/** Порядок для сетки карт: как на колоде — масти c, s, h, d; ранги A, 2…K */
+const SUITS_GRID = ['c', 's', 'h', 'd'] as const;
+const RANKS_GRID = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'] as const;
+
 const SUIT_SYMBOLS: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
 
 /** Подписи для старших карт в выпадающем списке */
@@ -54,68 +58,177 @@ function renderCardOption(value: string, label: string): string {
   return `<option value="${value}">${label}</option>`;
 }
 
-function buildCardSelects(container: HTMLElement, count: number, idPrefix: string, labels?: string[]): void {
-  container.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const wrap = document.createElement('div');
-    wrap.className = 'card-select';
-    const rank = document.createElement('select');
-    rank.id = `${idPrefix}-rank-${i}`;
-    rank.innerHTML = '<option value="">—</option>' + RANKS.map((r) => renderCardOption(r, RANK_LABELS[r] ?? r)).join('');
-    const suit = document.createElement('select');
-    suit.id = `${idPrefix}-suit-${i}`;
-    suit.innerHTML =
-      '<option value="">—</option>' +
-      SUITS.map((s) => renderCardOption(s, SUIT_SYMBOLS[s])).join('');
-    suit.addEventListener('change', () => {
-      suit.classList.remove('suit-red', 'suit-black');
-      if (suit.value === 'h' || suit.value === 'd') suit.classList.add('suit-red');
-      else if (suit.value === 's' || suit.value === 'c') suit.classList.add('suit-black');
-    });
-    wrap.append(rank, suit);
-    if (labels?.[i]) {
-      const item = document.createElement('div');
-      item.className = 'hole-card-item';
-      const label = document.createElement('span');
-      label.className = 'hole-card-label';
-      label.textContent = labels[i];
-      item.append(label, wrap);
-      container.append(item);
-    } else {
-      container.append(wrap);
-    }
+/** Карта как текст для триггера: ранг + символ масти */
+function cardToTriggerText(card: Card | null): string {
+  if (!card) return '—';
+  const rank = card[0] === 'T' ? '10' : card[0];
+  const suit = SUIT_SYMBOLS[card[1]] ?? card[1];
+  return `${rank}${suit}`;
+}
+
+/** Обновить отображение триггера пикера по значениям в select */
+function updatePickerDisplay(idPrefix: string, slotIndex: number): void {
+  const rankEl = document.getElementById(`${idPrefix}-rank-${slotIndex}`) as HTMLSelectElement | null;
+  const suitEl = document.getElementById(`${idPrefix}-suit-${slotIndex}`) as HTMLSelectElement | null;
+  const trigger = document.getElementById(`${idPrefix}-trigger-${slotIndex}`);
+  if (!rankEl || !suitEl || !trigger) return;
+  const r = rankEl.value;
+  const s = suitEl.value;
+  const card = r && s ? ((r + s) as Card) : null;
+  trigger.textContent = cardToTriggerText(card);
+  trigger.classList.toggle('card-picker-trigger--empty', !card);
+  const wrap = suitEl.closest('.card-picker-wrap');
+  if (idPrefix === 'board' && wrap) {
+    wrap.classList.remove('board-card--red-suit', 'board-card--black-suit');
+    if (suitEl.value === 'h' || suitEl.value === 'd') wrap.classList.add('board-card--red-suit');
+    else if (suitEl.value === 's' || suitEl.value === 'c') wrap.classList.add('board-card--black-suit');
+  }
+  if (idPrefix === 'hole' && wrap) {
+    wrap.classList.toggle('card-picker-wrap--red-suit', suitEl.value === 'h' || suitEl.value === 'd');
   }
 }
 
-/** Борд: 5 карт в ряд, каждая в обёртке «карта» */
+/** Карты, выбранные во всех слотах кроме указанного (для отключения в сетке) */
+function getSelectedCardsExcept(skipSlotIndex: number): Set<string> {
+  const set = new Set<string>();
+  for (let idx = 0; idx < 7; idx++) {
+    if (idx === skipSlotIndex) continue;
+    const card = getSlotCard(idx);
+    if (card) set.add(card);
+  }
+  return set;
+}
+
+/** Один слот выбора карты: скрытые select + триггер + попап с сеткой карт */
+function buildCardPickerSlot(
+  container: HTMLElement,
+  slotIndex: number,
+  idPrefix: string,
+  isBoard: boolean,
+  label?: string
+): void {
+  const wrap = document.createElement('div');
+  wrap.className = isBoard ? 'board-card card-picker-wrap' : 'card-picker-wrap';
+  wrap.dataset.slotIndex = String(slotIndex);
+  wrap.dataset.idPrefix = idPrefix;
+
+  const rank = document.createElement('select');
+  rank.id = `${idPrefix}-rank-${slotIndex}`;
+  rank.className = 'card-picker-select';
+  rank.setAttribute('aria-hidden', 'true');
+  rank.innerHTML = '<option value="">—</option>' + RANKS.map((r) => renderCardOption(r, RANK_LABELS[r] ?? r)).join('');
+  const suit = document.createElement('select');
+  suit.id = `${idPrefix}-suit-${slotIndex}`;
+  suit.className = 'card-picker-select';
+  suit.setAttribute('aria-hidden', 'true');
+  suit.innerHTML =
+    '<option value="">—</option>' +
+    SUITS.map((s) => renderCardOption(s, SUIT_SYMBOLS[s])).join('');
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'card-picker-trigger card-picker-trigger--empty';
+  trigger.id = `${idPrefix}-trigger-${slotIndex}`;
+  trigger.textContent = '—';
+  trigger.setAttribute('aria-label', label ? `Выбрать карту: ${label}` : `Выбрать карту ${slotIndex + 1}`);
+
+  const popover = document.createElement('div');
+  popover.className = 'card-picker-popover';
+  popover.hidden = true;
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', 'Выбор карты');
+
+  const grid = document.createElement('div');
+  grid.className = 'card-grid';
+  SUITS_GRID.forEach((s) => {
+    const row = document.createElement('div');
+    row.className = 'card-grid-row';
+    RANKS_GRID.forEach((r) => {
+      const card = (r + s) as Card;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'card-grid-cell';
+      if (s === 'h' || s === 'd') btn.classList.add('card-grid-cell--red');
+      btn.dataset.card = card;
+      const rankLabel = card[0] === 'T' ? '10' : card[0];
+      const suitSymbol = SUIT_SYMBOLS[card[1]] ?? card[1];
+      btn.innerHTML = `<span class="card-grid-rank">${rankLabel}</span><span class="card-grid-suit">${suitSymbol}</span>`;
+      btn.setAttribute('aria-label', `${cardToTriggerText(card)}`);
+      row.append(btn);
+    });
+    grid.append(row);
+  });
+  popover.append(grid);
+
+  wrap.append(rank, suit, trigger, popover);
+
+  function openPopover(): void {
+    const taken = getSelectedCardsExcept(idPrefix === 'hole' ? slotIndex : slotIndex + 2);
+    popover.querySelectorAll<HTMLButtonElement>('.card-grid-cell').forEach((btn) => {
+      const card = btn.dataset.card ?? '';
+      btn.disabled = taken.has(card);
+    });
+    const rect = trigger.getBoundingClientRect();
+    (popover as HTMLElement).style.top = `${rect.bottom + 4}px`;
+    popover.hidden = false;
+  }
+
+  function closePopover(): void {
+    popover.hidden = true;
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (popover.hidden) openPopover();
+    else closePopover();
+  });
+
+  popover.querySelectorAll('.card-grid-cell').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = (e.currentTarget as HTMLElement).dataset.card;
+      if (!card || (e.currentTarget as HTMLButtonElement).disabled) return;
+      rank.value = card[0];
+      suit.value = card[1];
+      rank.dispatchEvent(new Event('change', { bubbles: true }));
+      suit.dispatchEvent(new Event('change', { bubbles: true }));
+      updatePickerDisplay(idPrefix, slotIndex);
+      closePopover();
+    });
+  });
+
+  rank.addEventListener('change', () => updatePickerDisplay(idPrefix, slotIndex));
+  suit.addEventListener('change', () => updatePickerDisplay(idPrefix, slotIndex));
+
+  document.addEventListener('click', (e) => {
+    if (!popover.hidden && !wrap.contains(e.target as Node)) closePopover();
+  });
+
+  if (label) {
+    const item = document.createElement('div');
+    item.className = 'hole-card-item';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'hole-card-label';
+    labelEl.textContent = label;
+    item.append(labelEl, wrap);
+    container.append(item);
+  } else {
+    container.append(wrap);
+  }
+}
+
+function buildCardSelects(container: HTMLElement, count: number, idPrefix: string, labels?: string[]): void {
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    buildCardPickerSlot(container, i, idPrefix, false, labels?.[i]);
+  }
+}
+
+/** Борд: 5 карт, каждая — пикер с сеткой */
 function buildBoardCardSelects(container: HTMLElement): void {
   container.innerHTML = '';
   for (let i = 0; i < 5; i++) {
-    const cardWrap = document.createElement('div');
-    cardWrap.className = 'board-card';
-    const rank = document.createElement('select');
-    rank.id = `board-rank-${i}`;
-    rank.innerHTML = '<option value="">—</option>' + RANKS.map((r) => renderCardOption(r, RANK_LABELS[r] ?? r)).join('');
-    const suit = document.createElement('select');
-    suit.id = `board-suit-${i}`;
-    suit.innerHTML =
-      '<option value="">—</option>' +
-      SUITS.map((s) => renderCardOption(s, SUIT_SYMBOLS[s])).join('');
-    function setSuitColor(el: HTMLSelectElement) {
-      el.classList.remove('suit-red', 'suit-black');
-      cardWrap.classList.remove('board-card--red-suit', 'board-card--black-suit');
-      if (el.value === 'h' || el.value === 'd') {
-        el.classList.add('suit-red');
-        cardWrap.classList.add('board-card--red-suit');
-      } else if (el.value === 's' || el.value === 'c') {
-        el.classList.add('suit-black');
-        cardWrap.classList.add('board-card--black-suit');
-      }
-    }
-    suit.addEventListener('change', () => setSuitColor(suit));
-    setSuitColor(suit);
-    cardWrap.append(rank, suit);
-    container.append(cardWrap);
+    buildCardPickerSlot(container, i, 'board', true);
   }
 }
 
@@ -161,6 +274,7 @@ function clearSlot(slotIndex: number): void {
       if (cardWrap) cardWrap.classList.remove('board-card--red-suit', 'board-card--black-suit');
     }
   }
+  updatePickerDisplay(idPrefix, i);
 }
 
 /** Убрать дубликаты: если одна и та же карта выбрана в нескольких слотах, оставить только в первом по порядку. */

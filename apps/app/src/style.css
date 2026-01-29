@@ -132,8 +132,10 @@ body {
 /* Карты в руке — столбиком с подписями */
 .hole-cards-col {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3rem;
+  align-items: center;
 }
 
 .hole-card-item {
@@ -150,21 +152,157 @@ body {
   min-width: 5.5rem;
 }
 
-/* Селекты карт в руке — компактная высота */
-.hole-cards-col .card-select select {
-  padding: 0.15rem 0.25rem;
-  font-size: 0.8rem;
-  line-height: 1.15;
-  min-height: 1.4rem;
+/* Карты в руке — такие же по размеру и виду, как контролы на борде */
+.hole-cards-col .card-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 2.5rem;
+  width: 2.5rem;
+  min-height: 1.7rem;
+  padding: 0.15rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.hole-cards-col .card-select select:first-child {
-  min-width: 3.2rem;
+.hole-cards-col .card-picker-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 1.4rem;
+  padding: 0.12rem 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
 }
 
-.hole-cards-col .card-select select:last-child {
-  min-width: 2.2rem;
+.hole-cards-col .card-picker-wrap.card-picker-wrap--red-suit .card-picker-trigger {
+  color: #c41e3a;
+}
+
+/* Пикер карт: скрытые select, триггер + попап с сеткой */
+.card-picker-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.card-picker-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.card-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.8rem;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.card-picker-trigger:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.card-picker-trigger--empty {
+  color: var(--muted);
+}
+
+/* Попап на всю ширину разметки (#app max-width 480px, padding 0.6rem), не выходя за пределы */
+.card-picker-popover {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100vw - 1.2rem), calc(480px - 1.2rem));
+  max-width: calc(480px - 1.2rem);
+  top: auto;
+  bottom: auto;
+  margin-top: 0.25rem;
+  padding: 0.35rem;
+  max-height: min(70vh, 20rem);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.card-grid-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.1rem;
+}
+
+/* Ячейки растягиваются по ширине попапа (13 колонок делят место поровну) */
+.card-grid-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.04rem;
+  aspect-ratio: 1 / 1.2;
+  min-height: 2rem;
+  padding: 0.2rem;
+  font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.card-grid-cell:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--border);
+}
+
+.card-grid-cell:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.card-grid-rank {
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.card-grid-suit {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.card-grid-cell--red .card-grid-suit,
+.card-grid-cell--red .card-grid-rank {
+  color: var(--suit-red);
 }
 
 .card-select {
@@ -266,39 +404,18 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.board-card select {
+.board-card .card-picker-trigger {
   width: 100%;
+  min-width: 0;
+  min-height: 1.4rem;
   padding: 0.12rem 0.15rem;
   font-size: 0.75rem;
   line-height: 1.1;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text);
-  min-height: 1.4rem;
-  cursor: pointer;
 }
 
-.board-card select:first-child {
-  font-weight: 600;
-}
-
-/* Красные масти (черви, буби) — ранг и масть одного цвета */
-.board-card.board-card--red-suit select {
+/* Красные масти (черви, буби) */
+.board-card.board-card--red-suit .card-picker-trigger {
   color: #c41e3a;
-}
-
-.board-card select.suit-red {
-  color: #c41e3a;
-}
-
-/* Чёрные масти (пики, трефы) */
-.board-card.board-card--black-suit select {
-  color: var(--text);
-}
-
-.board-card select.suit-black {
-  color: var(--text);
 }
 
 /* 7 колонок: Флоп (1–3), промежуток, Терн (5), промежуток, Ривер (7) */
@@ -687,11 +804,17 @@ body {
   margin-top: 0.2rem;
 }
 
-/* ——— Touch / Android: крупнее зоны нажатия и минимальные размеры шрифтов ——— */
+/* ——— Touch / Android: крупнее зона нажатия и минимальные размеры ——— */
 @media (pointer: coarse) {
-  .hole-cards-col .card-select select {
+  .hole-cards-col .card-picker-wrap {
+    min-height: 2.4rem;
+    padding: 0.2rem;
+  }
+
+  .hole-cards-col .card-picker-trigger,
+  .board-card .card-picker-trigger {
     min-height: 2rem;
-    padding: 0.3rem 0.35rem;
+    padding: 0.2rem 0.2rem;
   }
 
   .board-card {
@@ -699,9 +822,9 @@ body {
     padding: 0.2rem;
   }
 
-  .board-card select {
-    min-height: 2rem;
-    padding: 0.2rem 0.2rem;
+  .card-grid-cell {
+    min-height: 2.4rem;
+    padding: 0.25rem;
   }
 
   .input-with-step input {
