@@ -195,8 +195,13 @@ export function initApp(): void {
 
   app.innerHTML = `
     <header class="header">
-      <h1>Sergey Romakhin's Poker Trainer</h1>
-      <p class="subtitle">Texas Hold'em · офлайн</p>
+      <div class="header-title-row">
+        <button type="button" class="title-help-trigger" aria-label="Инструкция">?</button>
+        <h1>Покерный тренажер СР</h1>
+        <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
+          <p>Тренажёр для расчёта эквити, аутов и советов в Texas Hold'em. Укажите карты в руке и на борде, позицию, банк и сумму колла — совет и вероятности обновляются автоматически.</p>
+        </div>
+      </div>
     </header>
 
     <main class="main">
@@ -206,35 +211,43 @@ export function initApp(): void {
       </section>
 
       <section class="section section-board">
-        <h2>Борд</h2>
-        <div class="board-wrapper">
-          <div id="board-cards" class="board-cards-row"></div>
-          <div class="board-labels">
-            <div class="board-stage board-stage-flop">
-              <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 2 Q 50 16 100 2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              <span class="board-stage-name">Флоп</span>
+        <div class="board-inner">
+          <h2 class="board-title">Борд</h2>
+          <div class="board-main">
+            <div class="board-labels">
+              <div class="board-stage board-stage-flop"><span class="board-stage-name">Флоп</span></div>
+              <div class="board-stage board-stage-turn"><span class="board-stage-name">Терн</span></div>
+              <div class="board-stage board-stage-river"><span class="board-stage-name">Ривер</span></div>
             </div>
-            <div class="board-stage board-stage-turn">
-              <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 2 Q 50 16 100 2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              <span class="board-stage-name">Терн</span>
+            <div class="board-brackets">
+              <div class="board-stage board-stage-flop">
+                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </div>
+              <div class="board-stage board-stage-turn">
+                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </div>
+              <div class="board-stage board-stage-river">
+                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </div>
             </div>
-            <div class="board-stage board-stage-river">
-              <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 2 Q 50 16 100 2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              <span class="board-stage-name">Ривер</span>
-            </div>
+            <div id="board-cards" class="board-cards-row"></div>
           </div>
         </div>
       </section>
 
       <section class="section options">
         <div class="option-position">
-          <label>
-            Позиция
+          <label class="position-label-row">
+            <span>Позиция</span>
+            <button type="button" class="position-help-trigger" aria-label="Подсказка по позициям">?</button>
             <select id="position">
               ${[0, 1, 2, 3, 4, 5].map((i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${i} ${POSITION_NAMES[i] ?? `Поз. ${i}`}</option>`).join('')}
             </select>
           </label>
-          <p class="position-legend">BTN — баттон, SB — малый блайнд, BB — большой блайнд, UTG — под пистолетом, MP — средняя позиция, CO — катофф</p>
+          <div class="position-help-popover" id="position-help-popover" role="tooltip" hidden>
+            <p><strong>0 BTN</strong> — баттон (дилер). <strong>1 SB</strong> — малый блайнд. <strong>2 BB</strong> — большой блайнд. <strong>3 UTG</strong> — под пистолетом (первый после блайндов). <strong>4 MP</strong> — средняя позиция. <strong>5 CO</strong> — катофф (предбаттон).</p>
+            <p>Если игроков больше 6 — выберите ту позицию из списка, которая по смыслу совпадает с вашей (кто когда ходит). Например, при 9 игроках тот, кто ходит первым после блайндов, отмечает UTG.</p>
+          </div>
         </div>
         <label>
           Игроков за столом
@@ -242,15 +255,21 @@ export function initApp(): void {
         </label>
         <label>
           Банк
-          <input type="number" id="pot-size" min="0" value="0" />
+          <div class="input-with-step">
+            <input type="number" id="pot-size" min="0" value="0" />
+            <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
+            <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
+          </div>
         </label>
         <label>
           Сумма колла
-          <input type="number" id="to-call" min="0" value="0" />
+          <div class="input-with-step">
+            <input type="number" id="to-call" min="0" value="0" />
+            <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
+            <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
+          </div>
         </label>
       </section>
-
-      <button type="button" id="btn-calc" class="btn">Рассчитать</button>
 
       <section class="section results" id="results">
         <div id="results-content"></div>
@@ -264,7 +283,59 @@ export function initApp(): void {
   buildBoardCardSelects(boardContainer);
   attachDuplicateCheck();
 
-  const btnCalc = document.getElementById('btn-calc')!;
+  const positionHelpTrigger = document.querySelector('.position-help-trigger') as HTMLButtonElement;
+  const positionHelpPopover = document.getElementById('position-help-popover')!;
+  if (positionHelpTrigger && positionHelpPopover) {
+    positionHelpTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isHidden = positionHelpPopover.hidden;
+      positionHelpPopover.hidden = !isHidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!positionHelpPopover.hidden && !positionHelpPopover.contains(e.target as Node) && e.target !== positionHelpTrigger) {
+        positionHelpPopover.hidden = true;
+      }
+    });
+  }
+
+  const titleHelpTrigger = document.querySelector('.title-help-trigger') as HTMLButtonElement;
+  const titleHelpPopover = document.getElementById('title-help-popover')!;
+  if (titleHelpTrigger && titleHelpPopover) {
+    titleHelpTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isHidden = titleHelpPopover.hidden;
+      titleHelpPopover.hidden = !isHidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!titleHelpPopover.hidden && !titleHelpPopover.contains(e.target as Node) && e.target !== titleHelpTrigger) {
+        titleHelpPopover.hidden = true;
+      }
+    });
+  }
+
+  document.querySelectorAll('.step-up').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const wrap = (btn as HTMLElement).closest('.input-with-step');
+      const input = wrap?.querySelector('input[type="number"]') as HTMLInputElement;
+      if (input) {
+        const v = (parseInt(input.value, 10) || 0) + 5;
+        input.value = String(v);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  });
+  document.querySelectorAll('.step-down').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const wrap = (btn as HTMLElement).closest('.input-with-step');
+      const input = wrap?.querySelector('input[type="number"]') as HTMLInputElement;
+      if (input) {
+        const v = Math.max(0, (parseInt(input.value, 10) || 0) - 5);
+        input.value = String(v);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  });
+
   const resultsContent = document.getElementById('results-content')!;
 
   function updateResults(): void {
@@ -369,6 +440,24 @@ export function initApp(): void {
     resultsContent.innerHTML = html;
   }
 
-  btnCalc.addEventListener('click', updateResults);
+  function attachAutoUpdate(): void {
+    const selectors: string[] = [];
+    for (let i = 0; i < 2; i++) selectors.push(`#hole-rank-${i}`, `#hole-suit-${i}`);
+    for (let i = 0; i < 5; i++) selectors.push(`#board-rank-${i}`, `#board-suit-${i}`);
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) el.addEventListener('change', updateResults);
+    }
+    const opts = ['#position', '#num-players', '#pot-size', '#to-call'];
+    for (const sel of opts) {
+      const el = document.querySelector(sel);
+      if (el) {
+        el.addEventListener('change', updateResults);
+        el.addEventListener('input', updateResults);
+      }
+    }
+  }
+
+  attachAutoUpdate();
   updateResults();
 }
