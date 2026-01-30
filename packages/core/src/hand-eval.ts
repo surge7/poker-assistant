@@ -113,17 +113,23 @@ export function evaluateHand(cards: Card[]): HandStrength {
   };
 }
 
-/** Лучшая рука из 2 карт игрока + борд (5 карт) */
+/** Лучшая рука из 2 карт игрока + борд (5 карт). Для 7 карт использует предвычисленные C(7,5) индексы. */
 export function evaluatePlayerHand(holeCards: Card[], board: Card[]): HandStrength {
   const all = [...holeCards, ...board];
   if (all.length < 5) return evaluateHand(all);
+  if (all.length === 7) {
+    let best = evaluateHand(COMB_7_5[0].map((i) => all[i]));
+    for (let c = 1; c < COMB_7_5.length; c++) {
+      const next = evaluateHand(COMB_7_5[c].map((i) => all[i]));
+      if (next.rank > best.rank || (next.rank === best.rank && next.value > best.value)) best = next;
+    }
+    return best;
+  }
   const combos = combinations(all, 5);
   let best = evaluateHand(combos[0]);
   for (let i = 1; i < combos.length; i++) {
     const next = evaluateHand(combos[i]);
-    if (next.rank > best.rank || (next.rank === best.rank && next.value > best.value)) {
-      best = next;
-    }
+    if (next.rank > best.rank || (next.rank === best.rank && next.value > best.value)) best = next;
   }
   return best;
 }
@@ -233,6 +239,24 @@ function findFlush(bySuit: Map<string, Card[]>): HandStrength | null {
   }
   return null;
 }
+
+/** Предвычисленные индексы C(7,5) = 21 комбинация по 5 из {0..6} — быстрее, чем рекурсивный combinations(). */
+const COMB_7_5 = (function (): number[][] {
+  const out: number[][] = [];
+  function go(start: number, chosen: number[]) {
+    if (chosen.length === 5) {
+      out.push(chosen.slice());
+      return;
+    }
+    for (let i = start; i < 7; i++) {
+      chosen.push(i);
+      go(i + 1, chosen);
+      chosen.pop();
+    }
+  }
+  go(0, []);
+  return out;
+})();
 
 function combinations<T>(arr: T[], k: number): T[][] {
   if (k === 0) return [[]];

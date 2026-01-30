@@ -1,4 +1,4 @@
-import { createDeck, removeKnown, shuffleDeck } from './deck';
+import { createDeck, fillRemaining, shuffleInPlace } from './deck';
 import { evaluatePlayerHand, compareHands } from './hand-eval';
 import type { Card } from './types';
 
@@ -23,6 +23,7 @@ function hashInput(holeCards: Card[], board: Card[], numOpponents: number): numb
  * Наша рука: holeCards + board. Остальные карты раздаются противникам (numOpponents),
  * затем доделывается борд до 5 карт. Считаем доли побед/разделов.
  * Используется фиксированный сид от входных данных — при одинаковых параметрах результат не скачет.
+ * Оптимизация: один раз создаём колоду и буфер remaining, в цикле — fillRemaining + shuffleInPlace без аллокаций.
  */
 export function equity(
   holeCards: Card[],
@@ -36,6 +37,11 @@ export function equity(
 
   const deck = createDeck();
   const dead = [...holeCards, ...board];
+  const deadSet = new Set(dead);
+  const needBoard = 5 - board.length;
+  const needOpponents = numOpponents * 2;
+  const minRemaining = needBoard + needOpponents;
+  const remaining: Card[] = [];
   const seed = hashInput(holeCards, board, numOpponents);
   const random = seededRandom(seed);
   let wins = 0;
@@ -43,25 +49,17 @@ export function equity(
   let losses = 0;
 
   for (let i = 0; i < iterations; i++) {
-    let remaining = removeKnown(deck, dead);
-    remaining = shuffleDeck(remaining, random);
+    fillRemaining(deck, deadSet, remaining);
+    if (remaining.length < minRemaining) continue;
+    shuffleInPlace(remaining, random);
 
-    const needBoard = 5 - board.length;
-    const needOpponents = numOpponents * 2;
-    if (remaining.length < needBoard + needOpponents) continue;
-
-    const newBoard = [...board, ...remaining.splice(0, needBoard)];
+    const newBoard = board.length === 5 ? board : [...board, ...remaining.splice(0, needBoard)];
     const ourHand = evaluatePlayerHand(holeCards, newBoard);
 
-    const opponentHands: ReturnType<typeof evaluatePlayerHand>[] = [];
-    for (let o = 0; o < numOpponents; o++) {
-      const oppCards = remaining.splice(0, 2);
-      opponentHands.push(evaluatePlayerHand(oppCards, newBoard));
-    }
-
-    let bestOpp = opponentHands[0];
-    for (const h of opponentHands) {
-      if (compareHands(h, bestOpp) > 0) bestOpp = h;
+    let bestOpp = evaluatePlayerHand(remaining.splice(0, 2), newBoard);
+    for (let o = 1; o < numOpponents; o++) {
+      const oppHand = evaluatePlayerHand(remaining.splice(0, 2), newBoard);
+      if (compareHands(oppHand, bestOpp) > 0) bestOpp = oppHand;
     }
 
     const cmp = compareHands(ourHand, bestOpp);

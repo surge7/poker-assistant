@@ -140,10 +140,11 @@ function buildCardPickerSlot(
 
   const grid = document.createElement('div');
   grid.className = 'card-grid';
-  SUITS_GRID.forEach((s) => {
+  // Строки — по рангам снизу вверх (туз внизу, король вверху), в строке — 4 масти
+  RANKS_GRID.forEach((r) => {
     const row = document.createElement('div');
     row.className = 'card-grid-row';
-    RANKS_GRID.forEach((r) => {
+    SUITS_GRID.forEach((s) => {
       const card = (r + s) as Card;
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -365,11 +366,15 @@ export function initApp(): void {
         </div>
         <label>
           Игроков за столом
-          <input type="number" id="num-players" min="2" max="10" value="2" />
+          <div class="input-with-step" data-step="1" data-min="2" data-max="10">
+            <input type="number" id="num-players" min="2" max="10" value="2" />
+            <button type="button" class="step-btn step-down" aria-label="−1">−1</button>
+            <button type="button" class="step-btn step-up" aria-label="+1">+1</button>
+          </div>
         </label>
         <label>
           Банк
-          <div class="input-with-step">
+          <div class="input-with-step" data-step="5" data-min="0">
             <input type="number" id="pot-size" min="0" value="0" />
             <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
             <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
@@ -377,7 +382,7 @@ export function initApp(): void {
         </label>
         <label>
           Сумма колла
-          <div class="input-with-step">
+          <div class="input-with-step" data-step="5" data-min="0">
             <input type="number" id="to-call" min="0" value="0" />
             <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
             <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
@@ -386,6 +391,7 @@ export function initApp(): void {
       </section>
 
       <section class="section results" id="results">
+        <button type="button" id="btn-calculate" class="btn btn-calculate">Рассчитать</button>
         <div id="results-content"></div>
       </section>
     </main>
@@ -431,22 +437,28 @@ export function initApp(): void {
     btn.addEventListener('click', () => {
       const wrap = (btn as HTMLElement).closest('.input-with-step');
       const input = wrap?.querySelector('input[type="number"]') as HTMLInputElement;
-      if (input) {
-        const v = (parseInt(input.value, 10) || 0) + 5;
-        input.value = String(v);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      if (!input || !wrap) return;
+      const step = parseInt(wrap.getAttribute('data-step') ?? '5', 10) || 1;
+      const min = parseInt(wrap.getAttribute('data-min') ?? '0', 10) ?? 0;
+      const maxAttr = wrap.getAttribute('data-max');
+      const max = maxAttr != null ? parseInt(maxAttr, 10) : undefined;
+      let v = (parseInt(input.value, 10) || min) + step;
+      if (max != null) v = Math.min(max, v);
+      input.value = String(v);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
   document.querySelectorAll('.step-down').forEach((btn) => {
     btn.addEventListener('click', () => {
       const wrap = (btn as HTMLElement).closest('.input-with-step');
       const input = wrap?.querySelector('input[type="number"]') as HTMLInputElement;
-      if (input) {
-        const v = Math.max(0, (parseInt(input.value, 10) || 0) - 5);
-        input.value = String(v);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      if (!input || !wrap) return;
+      const step = parseInt(wrap.getAttribute('data-step') ?? '5', 10) || 1;
+      const min = parseInt(wrap.getAttribute('data-min') ?? '0', 10) ?? 0;
+      let v = (parseInt(input.value, 10) || min) - step;
+      v = Math.max(min, v);
+      input.value = String(v);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
 
@@ -489,6 +501,7 @@ export function initApp(): void {
       toCall,
       numPlayers,
       positionIndex,
+      equityPercent: eqRange.percent,
     });
 
     const handLabel =
@@ -554,24 +567,8 @@ export function initApp(): void {
     resultsContent.innerHTML = html;
   }
 
-  function attachAutoUpdate(): void {
-    const selectors: string[] = [];
-    for (let i = 0; i < 2; i++) selectors.push(`#hole-rank-${i}`, `#hole-suit-${i}`);
-    for (let i = 0; i < 5; i++) selectors.push(`#board-rank-${i}`, `#board-suit-${i}`);
-    for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el) el.addEventListener('change', updateResults);
-    }
-    const opts = ['#position', '#num-players', '#pot-size', '#to-call'];
-    for (const sel of opts) {
-      const el = document.querySelector(sel);
-      if (el) {
-        el.addEventListener('change', updateResults);
-        el.addEventListener('input', updateResults);
-      }
-    }
-  }
+  const btnCalculate = document.getElementById('btn-calculate');
+  if (btnCalculate) btnCalculate.addEventListener('click', updateResults);
 
-  attachAutoUpdate();
   updateResults();
 }

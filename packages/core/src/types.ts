@@ -60,6 +60,8 @@ export interface TableContext {
   toCall: number;
   numPlayers: number;
   positionIndex: PositionIndex; // 0 = BTN, 1 = SB, 2 = BB, 3 = UTG, 4 = MP, 5 = CO
+  /** Если задано — используется вместо внутреннего расчёта эквити (ускоряет, когда эквити уже посчитан в UI). */
+  equityPercent?: number;
 }
 
 /** Результат расчёта аутов */

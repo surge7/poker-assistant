@@ -2,8 +2,7 @@ import { equityPercent } from './equity';
 import { evaluatePlayerHand } from './hand-eval';
 import { totalOuts } from './outs';
 import { compareToNuts } from './nuts';
-import type { TableContext } from './types';
-import type { AdviceResult } from './types';
+import type { TableContext, AdviceResult, Card } from './types';
 import { HandRank } from './types';
 
 /** Поздняя позиция (BTN, CO) — можно играть шире. Ранняя (UTG, MP, SB, BB) — уже. */
@@ -11,12 +10,42 @@ function isLatePosition(positionIndex: number, numPlayers: number): boolean {
   return positionIndex === 0 || positionIndex === numPlayers - 1;
 }
 
+const RANK_ORDER: Record<string, number> = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, 'T': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
+
+/** Карманная пара (две карты одного ранга). */
+function isPocketPair(cards: Card[]): boolean {
+  return cards.length === 2 && cards[0][0] === cards[1][0];
+}
+
+/**
+ * Премиум-карманная пара на префлопе (AA, KK, QQ, JJ).
+ * По гайдам: только такие пары «почти всегда играем»; TT и ниже — по ситуации и пот-оддсам.
+ */
+function isPremiumPocketPair(cards: Card[]): boolean {
+  if (cards.length !== 2 || cards[0][0] !== cards[1][0]) return false;
+  const r = RANK_ORDER[cards[0][0]] ?? -1;
+  return r >= 9; // J=9, Q=10, K=11, A=12
+}
+
+/**
+ * На префлопе рука, которую по гайдам не фолдим «по слабости»:
+ * только премиум-пара (AA–JJ) или две бродвей-карты (AK, AQ и т.д.) при хорошей эквити.
+ */
+function isPreflopNeverFoldWeak(cards: Card[]): boolean {
+  if (cards.length !== 2) return false;
+  const r0 = RANK_ORDER[cards[0][0]] ?? -1;
+  const r1 = RANK_ORDER[cards[1][0]] ?? -1;
+  if (r0 === r1) return r0 >= 9; // только AA, KK, QQ, JJ
+  return r0 >= 8 && r1 >= 8; // две бродвей-карты (T,J,Q,K,A)
+}
+
 /**
  * Простые советы на основе силы руки, эквити, аутов и позиции.
  * Не заменяет GTO; для обучения и подсказок в тренировочном режиме.
+ * Если в ctx передан equityPercent — он используется (один расчёт эквити в UI).
  */
 export function getAdvice(ctx: TableContext): AdviceResult {
-  const { phase, board, holeCards, potSize, toCall, numPlayers, positionIndex } = ctx;
+  const { phase, board, holeCards, potSize, toCall, numPlayers, positionIndex, equityPercent: eqFromCtx } = ctx;
   const latePos = isLatePosition(positionIndex, numPlayers);
 
   if (holeCards.length !== 2) {
@@ -25,7 +54,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
 
   const strength = evaluatePlayerHand(holeCards, board);
   const { total: outs, improveChance } = totalOuts(holeCards, board);
-  const eq = equityPercent(holeCards, board, numPlayers - 1, 300);
+  const eq = eqFromCtx != null ? eqFromCtx : equityPercent(holeCards, board, numPlayers - 1, 300);
   const { isNuts } = compareToNuts(holeCards, board);
 
   // Требуемая эквити для колла: колл оправдан, если эквити >= toCall/(pot+toCall).
@@ -41,6 +70,15 @@ export function getAdvice(ctx: TableContext): AdviceResult {
       action: 'raise',
       confidence: 0.95,
       reason: isNuts ? 'У вас натс — максимизируйте банк.' : 'Очень сильная рука — рейз для значения.',
+    };
+  }
+
+  // Префлоп: только премиум-пары (AA, KK, QQ, JJ) — по гайдам почти всегда играем
+  if (phase === 'preflop' && isPremiumPocketPair(holeCards)) {
+    return {
+      action: toCall > 0 ? 'call' : 'raise',
+      confidence: 0.9,
+      reason: 'Премиум-пара на префлопе (AA–JJ) — рейз или колл для значения.',
     };
   }
 
@@ -64,8 +102,16 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   }
 
   // Слабый дро без оддов: фолд, если эквити ниже порога (в поздней позиции порог ниже — чаще колл)
+  // На префлопе не фолдим только премиум (AA–JJ) и бродвеи по «слабости»; мелкие пары (TT и ниже) — по эквити.
   const foldBarPct = toCall > 0 ? Math.max(requiredEquityPct * 1.15, latePos ? 14 : 22) : 100;
-  if (strength.rank <= HandRank.Pair && outs < 5 && toCall > 0 && eq < foldBarPct) {
+  const isPreflopNeverFold = phase === 'preflop' && isPreflopNeverFoldWeak(holeCards);
+  if (
+    !isPreflopNeverFold &&
+    strength.rank <= HandRank.Pair &&
+    outs < 5 &&
+    toCall > 0 &&
+    eq < foldBarPct
+  ) {
     const potNote = requiredEquityPct > 40 ? ' Ставка велика относительно банка — фолд разумнее.' : '';
     return {
       action: 'fold',
@@ -75,8 +121,13 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   }
 
   // Низкая эквити относительно пот-оддов: колл не окупается (в поздней позиции — чуть мягче)
+  // На префлопе не фолдим по этому правилу только премиум (AA–JJ) и бродвеи
   const lowEqFoldMargin = latePos ? 1.05 : 1.1;
-  if (toCall > 0 && eq < requiredEquityPct * lowEqFoldMargin) {
+  if (
+    !isPreflopNeverFold &&
+    toCall > 0 &&
+    eq < requiredEquityPct * lowEqFoldMargin
+  ) {
     return {
       action: 'fold',
       confidence: 0.7,

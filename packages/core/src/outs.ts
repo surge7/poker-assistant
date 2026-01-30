@@ -71,7 +71,7 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   return results;
 }
 
-/** Упрощённо: один результат «всего аутов» и шанс улучшения на следующей улице */
+/** Упрощённо: один результат «всего аутов» и шанс улучшения. На флопе — на две улицы (Rule of 4); на терне — на одну (Rule of 2). */
 export function totalOuts(holeCards: Card[], board: Card[]): { total: number; improveChance: number } {
   const list = countOuts(holeCards, board);
   const total = Math.min(
@@ -79,7 +79,12 @@ export function totalOuts(holeCards: Card[], board: Card[]): { total: number; im
     46
   );
   const remaining = 52 - holeCards.length - board.length;
-  const improveChance = remaining > 0 ? total / remaining : 0;
+  const improveChance =
+    remaining > 0
+      ? board.length === 3
+        ? IMPROVE_RULE.twoCards(total) // флоп: две карты впереди (Rule of 4)
+        : total / remaining // терн или меньше: одна карта впереди (Rule of 2)
+      : 0;
   return { total, improveChance };
 }
 

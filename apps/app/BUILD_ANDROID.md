@@ -110,11 +110,19 @@ npx cap sync android
 
 ## Альтернатива: сборка из терминала (вариант 2)
 
-Если Android Studio уже установлена и нужен APK одной командой:
+**Из корня репозитория** (одна команда):
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+./build-android.sh
+```
+
+На Windows: `build-android.cmd`
+
+**Из папки apps/app:**
+
+```bash
+cd apps/app
 npm run android:apk
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+APK: `apps/app/android/app/build/outputs/apk/debug/app-debug.apk`
