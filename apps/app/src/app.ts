@@ -308,15 +308,22 @@ export function initApp(): void {
   const app = document.getElementById('app');
   if (!app) return;
 
+  const initialTheme = (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) || 'dark';
+  document.documentElement.setAttribute('data-theme', initialTheme);
+
   app.innerHTML = `
     <header class="header">
       <div class="header-title-row">
         <button type="button" class="title-help-trigger" aria-label="Инструкция">?</button>
         <h1>Покерный тренажер СР</h1>
         <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
-          <p>Тренажёр для расчёта эквити, аутов и советов в Texas Hold'em. Укажите карты в руке и на борде, позицию, банк и сумму колла — совет и вероятности обновляются автоматически.</p>
+          <p>Тренажёр Texas Hold'em. Укажите карты в руке и на борде, позицию, банк и сумму колла, затем нажмите «Рассчитать» — совет и вероятности появятся ниже.</p>
         </div>
       </div>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Светлая/тёмная тема" title="Светлая/тёмная тема">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+      </button>
     </header>
 
     <main class="main">
@@ -355,25 +362,25 @@ export function initApp(): void {
           <label class="position-label-row">
             <span>Позиция</span>
             <button type="button" class="position-help-trigger" aria-label="Подсказка по позициям">?</button>
-            <select id="position">
-              ${[0, 1, 2, 3, 4, 5].map((i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${i} ${POSITION_NAMES[i] ?? `Поз. ${i}`}</option>`).join('')}
-            </select>
           </label>
+          <select id="position">
+            ${[0, 1, 2, 3, 4, 5].map((i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${i} ${POSITION_NAMES[i] ?? `Поз. ${i}`}</option>`).join('')}
+          </select>
           <div class="position-help-popover" id="position-help-popover" role="tooltip" hidden>
             <p><strong>0 BTN</strong> — баттон (дилер). <strong>1 SB</strong> — малый блайнд. <strong>2 BB</strong> — большой блайнд. <strong>3 UTG</strong> — под пистолетом (первый после блайндов). <strong>4 MP</strong> — средняя позиция. <strong>5 CO</strong> — катофф (предбаттон).</p>
             <p>Если игроков больше 6 — выберите ту позицию из списка, которая по смыслу совпадает с вашей (кто когда ходит). Например, при 9 игроках тот, кто ходит первым после блайндов, отмечает UTG.</p>
           </div>
         </div>
         <label>
-          Игроков за столом
+          <span>Игроков за столом</span>
           <div class="input-with-step" data-step="1" data-min="2" data-max="10">
-            <input type="number" id="num-players" min="2" max="10" value="2" />
+            <input type="number" id="num-players" min="2" max="10" value="6" />
             <button type="button" class="step-btn step-down" aria-label="−1">−1</button>
             <button type="button" class="step-btn step-up" aria-label="+1">+1</button>
           </div>
         </label>
         <label>
-          Банк
+          <span>Банк</span>
           <div class="input-with-step" data-step="5" data-min="0">
             <input type="number" id="pot-size" min="0" value="0" />
             <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
@@ -381,7 +388,7 @@ export function initApp(): void {
           </div>
         </label>
         <label>
-          Сумма колла
+          <span>Сумма колла</span>
           <div class="input-with-step" data-step="5" data-min="0">
             <input type="number" id="to-call" min="0" value="0" />
             <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
@@ -433,6 +440,27 @@ export function initApp(): void {
     });
   }
 
+  const themeToggle = document.getElementById('theme-toggle');
+  const themeIconSun = document.querySelector('.theme-icon-sun') as HTMLElement;
+  const themeIconMoon = document.querySelector('.theme-icon-moon') as HTMLElement;
+  function applyTheme(theme: 'dark' | 'light') {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('theme', theme);
+    } catch (_) {}
+    if (themeIconSun && themeIconMoon) {
+      themeIconSun.hidden = theme === 'light';
+      themeIconMoon.hidden = theme === 'dark';
+    }
+  }
+  if (themeToggle && themeIconSun && themeIconMoon) {
+    applyTheme((document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark');
+    themeToggle.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+  }
+
   document.querySelectorAll('.step-up').forEach((btn) => {
     btn.addEventListener('click', () => {
       const wrap = (btn as HTMLElement).closest('.input-with-step');
@@ -468,7 +496,7 @@ export function initApp(): void {
     const holeCards = readCardSelects(holeContainer, 'hole');
     const boardCards = readCardSelects(boardContainer, 'board');
     const positionIndex = Math.min(5, Math.max(0, parseInt((document.getElementById('position') as HTMLSelectElement).value, 10) || 0));
-    const numPlayers = Math.min(10, Math.max(2, parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 2));
+    const numPlayers = Math.min(10, Math.max(2, parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6));
     const potSize = parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0;
     const toCall = parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0;
 

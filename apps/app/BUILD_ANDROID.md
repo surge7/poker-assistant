@@ -75,8 +75,11 @@ npx cap open android
 2. Дождитесь окончания сборки (внизу появится уведомление)
 3. В уведомлении нажмите **locate** — откроется папка с APK
 
-Либо APK лежит здесь:  
-`apps/app/android/app/build/outputs/apk/debug/app-debug.apk`
+APK лежит в папке сборки Android:  
+`apps/app/android/app/build/outputs/apk/debug/app-debug.apk`  
+
+При сборке через скрипты (`build-android.sh` / `build-android.cmd`) файл дополнительно копируется рядом с кодом приложения:  
+`apps/app/app-debug.apk`
 
 ## Шаг 4. Установить на телефон
 
@@ -110,7 +113,7 @@ npx cap sync android
 
 ## Альтернатива: сборка из терминала (вариант 2)
 
-**Из корня репозитория** (одна команда):
+**Из корня репозитория:**
 
 ```bash
 ./build-android.sh
@@ -118,11 +121,108 @@ npx cap sync android
 
 На Windows: `build-android.cmd`
 
-**Из папки apps/app:**
+**Из папки приложения (apps/app):**
 
 ```bash
 cd apps/app
-npm run android:apk
+./build-android.sh
 ```
 
-APK: `apps/app/android/app/build/outputs/apk/debug/app-debug.apk`
+Либо через npm: `npm run android:apk` (из папки apps/app).
+
+**Где искать APK:**  
+- Рядом с кодом приложения (после сборки скриптом): **`apps/app/app-debug.apk`**  
+- В папке сборки Android: `apps/app/android/app/build/outputs/apk/debug/app-debug.apk`
+
+---
+
+## Скриншоты 9:16 для стора (RuStore и др.) в Android Studio
+
+RuStore и другие магазины требуют скриншоты **строго 9:16** (например 720×1280, 1080×1920, 1440×2560). Если загрузить кадр с другим соотношением, стор обрежет его и модерация может отклонить. В Android Studio удобно делать скриншоты сразу в 9:16, если эмулятор запущен с таким разрешением.
+
+### 1. Виртуальное устройство с разрешением 1080×1920 (9:16)
+
+1. В Android Studio: **Tools** → **Device Manager**.
+2. Нажмите **Create Device**.
+3. В списке устройств выберите устройство с разрешением **1080×1920** (9:16):
+   - Если есть, например **Pixel 2** (1080×1920) — выберите его → **Next**.
+   - Если подходящего нет: нажмите **New Hardware Profile**, задайте **Resolution** ширина **1080**, высота **1920** → **Finish**, затем выберите этот профиль → **Next**.
+4. Выберите образ системы (например **API 34**) → **Next** → **Finish**.
+
+### 2. Запустить приложение в этом эмуляторе
+
+1. Вверху выберите созданное устройство (1080×1920).
+2. Нажмите **Run** (зелёный треугольник) — приложение откроется в эмуляторе.
+3. Перейдите на нужные экраны (главный, карты, результаты и т.д.) — для каждого экрана сделаете отдельный скриншот.
+
+### 3. Сделать скриншот
+
+1. В окне эмулятора справа на панели найдите иконку **камеры** (**Take screenshot**).
+2. Либо откройте меню **⋯** (три точки) → **Take screenshot**.
+3. Либо нажмите **Ctrl+S** (Windows/Linux) или **Cmd+S** (Mac).
+4. В диалоге выберите **Save** и укажите папку (например `store-screenshots-input` в проекте). Имя по умолчанию — `Screenshot_ГГГГММДД-ЧЧММСС.png`.
+
+Разрешение сохранённого файла будет **1080×1920** (9:16) — его можно сразу загружать в RuStore. Если в консоли рекомендуют JPG 1080×1920, положите PNG в папку **store-screenshots-input/** и выполните `npm run store-screenshots` — в **store-screenshots/** появятся JPG 1080×1920.
+
+### 4. Загрузить в RuStore
+
+В консоли разработчика в блоке «Скриншоты приложения для телефона» загрузите **только** эти файлы (1080×1920, 9:16). Не загружайте скриншоты с обычного телефона — у него другое соотношение сторон, стор их обрежет.
+
+Подробнее о требованиях RuStore: [Правила к приложениям](https://help.rustore.ru/rustore/for_developers/publishing_and_verifying_apps/requirement_apps).
+
+---
+
+## Release-сборка для пользователей (Google Play и установка вручную)
+
+Debug-APK подходит для тестов. Для публикации в Google Play и для установки пользователями нужна **подписанная release-сборка**.
+
+### 1. Создать keystore (один раз)
+
+В терминале (например, в папке `apps/app/android`):
+
+```bash
+keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias
+```
+
+Укажите пароли и данные (ФИО, организация и т.д.). Файл `upload-keystore.jks` и пароли **обязательно сохраните** — без них нельзя будет обновлять приложение в маркете.
+
+### 2. Настроить подпись
+
+В папке `apps/app/android`:
+
+1. Скопируйте пример: `cp keystore.properties.example keystore.properties`
+2. Откройте `keystore.properties` и укажите реальные значения:
+
+```properties
+storeFile=upload-keystore.jks
+storePassword=ваш_пароль_хранилища
+keyAlias=my-key-alias
+keyPassword=ваш_пароль_ключа
+```
+
+Путь `storeFile` — относительно папки `android` (например, просто `upload-keystore.jks`, если файл лежит в `android/`). Файл `keystore.properties` в git не коммитить (он уже в `.gitignore`).
+
+### 3. Собрать release
+
+Из папки приложения:
+
+```bash
+cd apps/app
+npm run android:release
+```
+
+или:
+
+```bash
+cd apps/app
+./build-android-release.sh
+```
+
+Скрипт соберёт веб, синхронизирует с Android и запустит `bundleRelease` и `assembleRelease`.
+
+### 4. Где искать файлы
+
+- **AAB (для Google Play):** `apps/app/app-release.aab` — загружайте в Google Play Console (Release → Production или тестовый трек).
+- **APK (для установки вручную):** `apps/app/app-release.apk` — можно раздавать пользователям напрямую (почта, сайт и т.д.).
+
+В Android Studio release можно собрать так: **Build** → **Generate App Bundles or APKs** → **Android App Bundle** или **APK**, выберите **release** и укажите существующий keystore (тот же, что в `keystore.properties`).

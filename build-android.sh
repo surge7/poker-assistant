@@ -17,6 +17,8 @@ cd "$APP_DIR" && npx cap sync android
 echo "Сборка APK (debug)..."
 cd "$ANDROID_DIR" && ./gradlew assembleDebug
 
-APK="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
+APK_SRC="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
+APK_DST="$APP_DIR/app-debug.apk"
+cp "$APK_SRC" "$APK_DST"
 echo ""
-echo "Готово. APK: $APK"
+echo "Готово. APK скопирован: $APK_DST"

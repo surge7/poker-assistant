@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  base: './', // относительные пути — корректная загрузка на статическом хостинге (Yandex Cloud, S3)
   root: __dirname,
   server: {
     host: '127.0.0.1',

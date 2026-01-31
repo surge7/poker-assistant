@@ -14,5 +14,7 @@ cd android
 call gradlew.bat assembleDebug
 if errorlevel 1 exit /b 1
 
+copy /Y "app\build\outputs\apk\debug\app-debug.apk" "..\app-debug.apk" >nul
+cd ..
 echo.
-echo Готово. APK: %~dp0apps\app\android\app\build\outputs\apk\debug\app-debug.apk
+echo Готово. APK скопирован: %~dp0apps\app\app-debug.apk
