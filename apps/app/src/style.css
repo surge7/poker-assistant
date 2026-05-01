@@ -997,6 +997,68 @@ body {
   font-style: italic;
 }
 
+.presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.preset-chip {
+  padding: var(--space-1) var(--space-2);
+  min-height: 36px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  background: var(--felt-600);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.preset-chip:hover:not(:disabled) {
+  border-color: var(--gold-500);
+  color: var(--gold-400);
+}
+
+.preset-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.players-row {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+
+.player-chip {
+  width: 44px;
+  height: 44px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  background: var(--felt-600);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.player-chip--active {
+  color: var(--felt-900);
+  background: var(--gold-400);
+  border-color: var(--gold-300);
+  font-weight: var(--font-weight-bold);
+}
+
+.player-chip:hover:not(.player-chip--active) {
+  border-color: var(--gold-500);
+  color: var(--gold-400);
+}
+
 .nuts-badge {
   font-size: 0.72rem;
   font-weight: 400;

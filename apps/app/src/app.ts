@@ -376,11 +376,10 @@ export function initApp(): void {
         </div>
         <label>
           <span>Игроков за столом</span>
-          <div class="input-with-step" data-step="1" data-min="2" data-max="10">
-            <input type="number" id="num-players" min="2" max="10" value="6" />
-            <button type="button" class="step-btn step-down" aria-label="−1">−1</button>
-            <button type="button" class="step-btn step-up" aria-label="+1">+1</button>
+          <div class="players-row" role="group" aria-label="Количество игроков">
+            ${[2,3,4,5,6,7,8,9,10].map(n => `<button type="button" class="player-chip${n === 6 ? ' player-chip--active' : ''}" data-players="${n}">${n}</button>`).join('')}
           </div>
+          <input type="hidden" id="num-players" value="6">
         </label>
         <label>
           <span>Банк</span>
@@ -397,6 +396,12 @@ export function initApp(): void {
             <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
             <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
           </div>
+          <div class="presets-row" id="call-presets">
+            <button type="button" class="preset-chip" data-preset="third">⅓ банка</button>
+            <button type="button" class="preset-chip" data-preset="half">½ банка</button>
+            <button type="button" class="preset-chip" data-preset="pot">Банк</button>
+            <button type="button" class="preset-chip" data-preset="zero">0</button>
+          </div>
         </label>
       </section>
 
@@ -412,6 +417,43 @@ export function initApp(): void {
   buildCardSelects(holeContainer, 2, 'hole', ['Первая карта', 'Вторая карта']);
   buildBoardCardSelects(boardContainer);
   attachDuplicateCheck();
+
+  // Player chips
+  document.querySelectorAll<HTMLButtonElement>('.player-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const n = chip.dataset.players ?? '6';
+      (document.getElementById('num-players') as HTMLInputElement).value = n;
+      document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('player-chip--active'));
+      chip.classList.add('player-chip--active');
+    });
+  });
+
+  // Preset chips for to-call
+  function updatePresetChips() {
+    const potVal = parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0;
+    const presetRow = document.getElementById('call-presets');
+    if (!presetRow) return;
+    presetRow.querySelectorAll<HTMLButtonElement>('.preset-chip').forEach(chip => {
+      chip.disabled = potVal === 0 && chip.dataset.preset !== 'zero';
+    });
+  }
+
+  document.getElementById('call-presets')?.querySelectorAll<HTMLButtonElement>('.preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const potVal = parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0;
+      const input = document.getElementById('to-call') as HTMLInputElement;
+      switch (chip.dataset.preset) {
+        case 'third': input.value = String(Math.round(potVal / 3)); break;
+        case 'half': input.value = String(Math.round(potVal / 2)); break;
+        case 'pot': input.value = String(potVal); break;
+        case 'zero': input.value = '0'; break;
+      }
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+
+  document.getElementById('pot-size')?.addEventListener('input', updatePresetChips);
+  updatePresetChips();
 
   const positionHelpTrigger = document.querySelector('.position-help-trigger') as HTMLButtonElement;
   const positionHelpPopover = document.getElementById('position-help-popover')!;
