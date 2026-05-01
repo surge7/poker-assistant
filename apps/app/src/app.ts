@@ -313,9 +313,9 @@ export function initApp(): void {
 
   app.innerHTML = `
     <header class="header">
+      <button type="button" class="title-help-trigger" aria-label="Инструкция">?</button>
       <div class="header-title-row">
-        <button type="button" class="title-help-trigger" aria-label="Инструкция">?</button>
-        <h1>Покерный тренажер СР</h1>
+        <h1 class="header-logo-wrap"><img src="./logo-pirate.png" alt="Покерный тренажер СР" class="header-logo"></h1>
         <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
           <p>Тренажёр Texas Hold'em. Укажите карты в руке и на борде, позицию, банк и сумму колла, затем нажмите «Рассчитать» — совет и вероятности появятся ниже.</p>
         </div>
