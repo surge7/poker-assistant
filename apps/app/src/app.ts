@@ -706,56 +706,63 @@ export function initApp(): void {
           : `Для полной оценки добавьте на борд ещё ${3 - board.length} карт${3 - board.length === 1 ? 'у' : 'ы'} (флоп = 3 карты).`
         : strength.name;
 
-    const adviceActionClass = advice.action === 'fold' ? 'advice-action advice-action--fold' : 'advice-action';
+    const actionClass = advice.action === 'fold' ? 'results-action results-action--fold'
+      : advice.action === 'check' ? 'results-action results-action--neutral'
+      : 'results-action results-action--positive';
+
+    const equityClass = eqRange.percent < 35 ? 'results-equity results-equity--low' : 'results-equity';
+
     let html = `
-      <div class="result-block advice">
-        <h3>Совет</h3>
-        <p class="${adviceActionClass}">${advice.action.toUpperCase()}</p>
-        <p class="advice-reason">${advice.reason}</p>
+      <div class="results-hero animate-fade-in-up">
+        <div class="${actionClass}">${advice.action.toUpperCase()}</div>
+        <div class="${equityClass}">${eqRange.low}%–${eqRange.high}%</div>
+        <p class="results-reason">${advice.reason}</p>
+        <div class="results-context">
+          <span>${phaseLabel}</span>
+          <span>·</span>
+          <span>${numPlayers} игроков</span>
+          ${potSize > 0 ? `<span>·</span><span>Банк ${potSize}</span>` : ''}
+          ${toCall > 0 ? `<span>·</span><span>Колл ${toCall}</span>` : ''}
+        </div>
       </div>
     `;
 
-    const allinValueClass = eqRange.percent < 50 ? 'allin-value allin-value--low' : 'allin-value';
     html += `
-        <div class="result-block result-block-allin">
-          <h3>Вероятность для All-in</h3>
-          <p class="${allinValueClass}">${eqRange.low}% – ${eqRange.high}%</p>
-          <p class="allin-desc">${phaseLabel}. Вероятность выигрыша, если поставить всё (против ${numPlayers - 1} оппонентов). Оценка ~${eqRange.percent}%, диапазон — 95% доверительный интервал.</p>
-        </div>
-      `;
-
-    html += `
-      <div class="result-block">
-        <h3>Рука</h3>
-        <p class="hand-name">${handLabel}</p>
-        <p class="hand-cards">${strength.cards.map(cardToHtml).join(' ')}</p>
+      <div class="results-hand">
+        <span class="results-hand-name">${handLabel}</span>
+        <span class="results-hand-cards">${strength.cards.map(cardToHtml).join('')}</span>
       </div>
     `;
 
     if (board.length >= 3) {
       html += `
-        <div class="result-block">
-          <h3>Ауты</h3>
-          ${outsList.length ? outsList.map((o) => {
-            const cardsHtml = o.outCards?.length ? `<div class="outs-cards">${o.outCards.map((c) => cardToHtml(c)).join('')}</div><span class="outs-value">${o.outs} аутов</span>` : '';
-            return `<div class="outs-item"><p>${o.description} → шанс улучшения ${(o.improveChance * 100).toFixed(1)}%</p>${cardsHtml}</div>`;
-          }).join('') : '<p>Нет явных дро.</p>'}
-          ${totalOutsCount > 0 ? `<p><strong>Всего аутов:</strong> ${totalOutsCount}</p>` : ''}
-        </div>
-        <div class="result-block">
-          <h3>Эквити</h3>
-          <p>${eqRange.low}% – ${eqRange.high}% (против ${numPlayers - 1} оппонентов)</p>
-        </div>
+        <details class="results-details">
+          <summary>Ауты${totalOutsCount > 0 ? ` (${totalOutsCount})` : ''}</summary>
+          <div class="results-details-body">
+            ${outsList.length ? outsList.map((o) => {
+              const cardsHtml = o.outCards?.length ? `<div class="outs-cards">${o.outCards.map((c) => cardToHtml(c)).join('')}</div>` : '';
+              return `<div class="outs-item"><p>${o.description} — шанс ${(o.improveChance * 100).toFixed(1)}%</p>${cardsHtml}</div>`;
+            }).join('') : '<p>Нет явных дро.</p>'}
+          </div>
+        </details>
+        <details class="results-details">
+          <summary>Эквити</summary>
+          <div class="results-details-body">
+            <p>${eqRange.low}%–${eqRange.high}% против ${numPlayers - 1} оппонентов (~${eqRange.percent}%)</p>
+          </div>
+        </details>
       `;
     }
 
     if (nutsInfo) {
       html += `
-        <div class="result-block">
-          <h3>Натс</h3>
-          <p>${nutsInfo.description}</p>
-          ${nutsInfo.isNuts ? '<p class="nuts-badge">У вас натс</p>' : ''}
-        </div>
+        <details class="results-details">
+          <summary>Натс</summary>
+          <div class="results-details-body">
+            <p>${nutsInfo.description}</p>
+            ${nutsInfo.isNuts ? '<p class="nuts-badge">🏆 У вас натс!</p>' : ''}
+          </div>
+        </details>
       `;
     }
 
