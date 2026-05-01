@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@capacitor/haptics": "^6.0.3",
-    "@capacitor/status-bar": "^8.0.2",
+    "@capacitor/status-bar": "^6.0.3",
     "@poker/core": "file:../../packages/core"
   },
   "devDependencies": {
