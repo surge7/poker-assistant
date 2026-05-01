@@ -1467,3 +1467,28 @@ body {
   max-width: 280px;
   line-height: var(--line-height-relaxed);
 }
+
+.results-actions-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.btn-reset {
+  width: 56px;
+  height: 56px;
+  font-size: var(--font-size-xl);
+  color: var(--text-muted);
+  background: var(--felt-700);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.btn-reset:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}

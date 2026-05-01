@@ -9,6 +9,7 @@ import {
   type Card,
 } from '@poker/core';
 import { impactLight, selectionChanged, notificationWarning } from './haptics';
+import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = ['s', 'h', 'd', 'c'];
@@ -528,7 +529,10 @@ export function initApp(): void {
       </section>
 
       <section class="section results" id="results">
-        <button type="button" id="btn-calculate" class="btn btn-calculate btn-ripple">Рассчитать</button>
+        <div class="results-actions-row">
+          <button type="button" id="btn-calculate" class="btn btn-calculate btn-ripple">Рассчитать</button>
+          <button type="button" id="btn-reset" class="btn btn-reset" aria-label="Сбросить ввод">↺</button>
+        </div>
         <div id="results-content"></div>
       </section>
     </main>
@@ -540,6 +544,90 @@ export function initApp(): void {
   buildBoardCardSelects(boardContainer);
   attachDuplicateCheck();
 
+  // --- Persistence: load and restore state ---
+  function applyState(state: AppState) {
+    for (let i = 0; i < 2; i++) {
+      const card = state.holeCards[i];
+      const r = document.getElementById(`hole-rank-${i}`) as HTMLSelectElement | null;
+      const s = document.getElementById(`hole-suit-${i}`) as HTMLSelectElement | null;
+      if (r && s) {
+        r.value = card ? card[0] : '';
+        s.value = card ? card[1] : '';
+        r.dispatchEvent(new Event('change', { bubbles: true }));
+        s.dispatchEvent(new Event('change', { bubbles: true }));
+        updatePickerDisplay('hole', i);
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      const card = state.boardCards[i];
+      const r = document.getElementById(`board-rank-${i}`) as HTMLSelectElement | null;
+      const s = document.getElementById(`board-suit-${i}`) as HTMLSelectElement | null;
+      if (r && s) {
+        r.value = card ? card[0] : '';
+        s.value = card ? card[1] : '';
+        r.dispatchEvent(new Event('change', { bubbles: true }));
+        s.dispatchEvent(new Event('change', { bubbles: true }));
+        updatePickerDisplay('board', i);
+      }
+    }
+    (document.getElementById('position') as HTMLInputElement).value = String(state.position);
+    document.querySelectorAll('.position-chip').forEach(c => {
+      c.classList.toggle('position-chip--active', c.getAttribute('data-position') === String(state.position));
+    });
+    (document.getElementById('num-players') as HTMLInputElement).value = String(state.numPlayers);
+    document.querySelectorAll('.player-chip').forEach(c => {
+      c.classList.toggle('player-chip--active', c.getAttribute('data-players') === String(state.numPlayers));
+    });
+    (document.getElementById('pot-size') as HTMLInputElement).value = String(state.potSize);
+    (document.getElementById('to-call') as HTMLInputElement).value = String(state.toCall);
+  }
+
+  const savedState = loadState();
+  if (savedState) {
+    applyState(savedState);
+  }
+
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  function debouncedSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const holeCards: [AppState['holeCards'][0], AppState['holeCards'][1]] = [
+        (document.getElementById('hole-rank-0') as HTMLSelectElement)?.value && (document.getElementById('hole-suit-0') as HTMLSelectElement)?.value
+          ? (((document.getElementById('hole-rank-0') as HTMLSelectElement).value + (document.getElementById('hole-suit-0') as HTMLSelectElement).value) as AppState['holeCards'][0])
+          : null,
+        (document.getElementById('hole-rank-1') as HTMLSelectElement)?.value && (document.getElementById('hole-suit-1') as HTMLSelectElement)?.value
+          ? (((document.getElementById('hole-rank-1') as HTMLSelectElement).value + (document.getElementById('hole-suit-1') as HTMLSelectElement).value) as AppState['holeCards'][1])
+          : null,
+      ];
+      const boardCards: AppState['boardCards'] = [null, null, null, null, null];
+      for (let i = 0; i < 5; i++) {
+        const rv = (document.getElementById(`board-rank-${i}`) as HTMLSelectElement)?.value;
+        const sv = (document.getElementById(`board-suit-${i}`) as HTMLSelectElement)?.value;
+        if (rv && sv) boardCards[i] = (rv + sv) as AppState['boardCards'][0];
+      }
+      saveState({
+        version: 1,
+        holeCards,
+        boardCards,
+        position: parseInt((document.getElementById('position') as HTMLInputElement).value, 10) || 0,
+        numPlayers: parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6,
+        potSize: parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0,
+        toCall: parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0,
+      });
+    }, 300);
+  }
+
+  for (let i = 0; i < 2; i++) {
+    document.getElementById(`hole-rank-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`hole-suit-${i}`)?.addEventListener('change', debouncedSave);
+  }
+  for (let i = 0; i < 5; i++) {
+    document.getElementById(`board-rank-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`board-suit-${i}`)?.addEventListener('change', debouncedSave);
+  }
+  document.getElementById('pot-size')?.addEventListener('input', debouncedSave);
+  document.getElementById('to-call')?.addEventListener('input', debouncedSave);
+
   // Player chips
   document.querySelectorAll<HTMLButtonElement>('.player-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -548,6 +636,7 @@ export function initApp(): void {
       document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('player-chip--active'));
       chip.classList.add('player-chip--active');
       selectionChanged();
+      debouncedSave();
     });
   });
 
@@ -586,6 +675,7 @@ export function initApp(): void {
       document.querySelectorAll('.position-chip').forEach(c => c.classList.remove('position-chip--active'));
       chip.classList.add('position-chip--active');
       selectionChanged();
+      debouncedSave();
     });
   });
 
@@ -813,6 +903,16 @@ export function initApp(): void {
     impactLight();
     updateResults(true);
   });
+
+  const btnReset = document.getElementById('btn-reset');
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      clearState();
+      applyState(getDefaultState());
+      notificationWarning();
+      resultsContent.innerHTML = '';
+    });
+  }
 
   updateResults();
 }
