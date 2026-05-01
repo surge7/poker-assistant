@@ -207,6 +207,12 @@ function buildCardPickerSlot(
       preview.className = 'picker-preview';
       doneBtn.disabled = true;
     }
+
+    preview.classList.remove('animate-scale-in');
+    void preview.offsetWidth;
+    if (pendingRank && pendingSuit) {
+      preview.classList.add('animate-scale-in');
+    }
   }
 
   function setActiveRank(r: string) {
@@ -518,7 +524,7 @@ export function initApp(): void {
       </section>
 
       <section class="section results" id="results">
-        <button type="button" id="btn-calculate" class="btn btn-calculate">Рассчитать</button>
+        <button type="button" id="btn-calculate" class="btn btn-calculate btn-ripple">Рассчитать</button>
         <div id="results-content"></div>
       </section>
     </main>
