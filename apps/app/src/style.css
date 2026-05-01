@@ -33,12 +33,14 @@
 
 html {
   overflow-x: hidden;
+  background: var(--felt-900);
 }
 
 body {
   margin: 0;
   font-family: var(--font-family);
-  background: var(--bg);
+  background: var(--felt-900);
+  background-image: radial-gradient(ellipse at 50% -20%, var(--felt-700) 0%, var(--felt-900) 60%);
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
@@ -49,11 +51,11 @@ body {
 #app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 0.6rem;
-  padding-left: max(0.6rem, env(safe-area-inset-left));
-  padding-right: max(0.6rem, env(safe-area-inset-right));
-  padding-top: max(0.6rem, env(safe-area-inset-top));
-  padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+  padding: var(--space-2);
+  padding-left: max(var(--space-2), env(safe-area-inset-left));
+  padding-right: max(var(--space-2), env(safe-area-inset-right));
+  padding-top: max(var(--space-2), env(safe-area-inset-top));
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
 }
 
 .header {
