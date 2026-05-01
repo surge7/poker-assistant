@@ -293,28 +293,56 @@ body {
 }
 
 .card-picker-trigger {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 2.8rem;
-  min-height: 1.7rem;
-  padding: 0.2rem 0.35rem;
-  font-size: 0.85rem;
-  line-height: 1.2;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  width: 56px;
+  height: 80px;
+  min-width: 56px;
+  padding: var(--space-1);
+  background: var(--card-face);
+  color: var(--text-primary);
+  border: 1px solid var(--card-face-border);
+  border-radius: var(--radius-card);
   cursor: pointer;
+  box-shadow: var(--shadow-card-rest);
+  transition: transform var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
 }
 
 .card-picker-trigger:hover {
-  border-color: var(--accent);
-  background: var(--surface);
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.card-picker-trigger:active {
+  transform: scale(0.96);
+  transition-duration: var(--motion-instant);
 }
 
 .card-picker-trigger--empty {
-  color: var(--muted);
+  background: transparent;
+  border: 2px dashed var(--border-subtle);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-xl);
+}
+
+.card-picker-trigger--empty:hover {
+  border-color: var(--gold-500);
+  color: var(--gold-400);
+}
+
+.card-picker-wrap--red-suit .card-picker-trigger:not(.card-picker-trigger--empty),
+.board-card--red-suit .card-picker-trigger:not(.card-picker-trigger--empty) {
+  color: var(--suit-red);
+}
+
+.card-picker-wrap:not(.card-picker-wrap--red-suit) .card-picker-trigger:not(.card-picker-trigger--empty),
+.board-card--black-suit .card-picker-trigger:not(.card-picker-trigger--empty) {
+  color: var(--suit-black);
 }
 
 /* Попап на всю ширину разметки (#app max-width 480px, padding 0.6rem), не выходя за пределы */
@@ -824,6 +852,38 @@ body {
   gap: 0.35rem;
   align-items: center;
 }
+
+.card-display {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 40px;
+  height: 56px;
+  padding: 3px 4px;
+  background: var(--card-face);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-face-border);
+  box-shadow: var(--shadow-card-rest);
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.card-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.card-char {
+  display: none;
+}
+
+.suit-h, .suit-d { color: var(--suit-red); }
+.suit-s, .suit-c { color: var(--suit-black); }
 
 .hand-cards .card-display {
   display: inline-flex;
