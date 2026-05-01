@@ -313,17 +313,20 @@ export function initApp(): void {
 
   app.innerHTML = `
     <header class="header">
-      <button type="button" class="title-help-trigger" aria-label="Инструкция">?</button>
-      <div class="header-title-row">
+      <div class="header-brand">
         <h1 class="header-logo-wrap"><img src="./logo-pirate.png" alt="Покерный тренажер СР" class="header-logo"></h1>
-        <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
-          <p>Тренажёр Texas Hold'em. Укажите карты в руке и на борде, позицию, банк и сумму колла, затем нажмите «Рассчитать» — совет и вероятности появятся ниже.</p>
-        </div>
+        <span class="header-title">Покерный тренажёр</span>
       </div>
-      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Светлая/тёмная тема" title="Светлая/тёмная тема">
-        <span class="theme-icon theme-icon-sun" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
-        <span class="theme-icon theme-icon-moon" aria-hidden="true" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
-      </button>
+      <div class="header-controls">
+        <button type="button" class="title-help-trigger btn-ripple" aria-label="Инструкция">?</button>
+        <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
+          <p>Это тренажёр Texas Hold'em. Введите свои карты и борд, выберите позицию, укажите банк и сумму колла — и нажмите «Рассчитать». Вы получите совет, эквити и подсказки по аутам.</p>
+        </div>
+        <button type="button" class="theme-toggle btn-ripple" id="theme-toggle" aria-label="Светлая/тёмная тема" title="Светлая/тёмная тема">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+        </button>
+      </div>
     </header>
 
     <main class="main">
