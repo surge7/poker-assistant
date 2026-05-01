@@ -19,6 +19,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@capacitor/haptics": "^6.0.3",
     "@poker/core": "file:../../packages/core"
   },
   "devDependencies": {

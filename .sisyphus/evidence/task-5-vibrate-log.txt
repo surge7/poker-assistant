@@ -1,0 +1,1 @@
+navigator.vibrate fallback: PASS (web)
