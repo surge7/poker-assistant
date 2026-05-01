@@ -570,7 +570,6 @@ body {
   margin-left: 2.5rem;
 }
 
-/* Grid layout for board cards */
 .board-cards-row {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
