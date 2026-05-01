@@ -12,7 +12,11 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
   },
   plugins: {
-    // При необходимости: настройки Splash, Keyboard и т.д.
+    StatusBar: {
+      backgroundColor: '#0d2818',
+      style: 'DARK',
+      overlaysWebView: false,
+    },
   },
 };
 
