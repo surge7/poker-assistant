@@ -668,13 +668,37 @@ export function initApp(): void {
     const toCall = parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0;
 
     if (holeCards.length !== 2) {
-      resultsContent.innerHTML = '<p class="message">Выберите ровно 2 карты в руке.</p>';
+      resultsContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="6" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+              <rect x="26" y="6" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M24 32 L24 42 M18 42 L30 42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="empty-state-title">Начнём раздачу</div>
+          <div class="empty-state-subtitle">Выберите две карты — и я подскажу что делать</div>
+        </div>
+      `;
       return;
     }
 
     const allCards = [...holeCards, ...boardCards];
     if (new Set(allCards).size !== allCards.length) {
-      resultsContent.innerHTML = '<p class="message">Одна и та же карта не может быть в руке и на борде дважды. Выберите разные карты.</p>';
+      resultsContent.innerHTML = `
+        <div class="error-state">
+          <div class="error-state-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 9v8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="16" cy="22" r="1.5" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="error-state-title">Ой, дубликат</div>
+          <div class="error-state-subtitle">Одна карта не может быть в руке и на борде одновременно. Очистите дублирующуюся карту.</div>
+        </div>
+      `;
       return;
     }
 
