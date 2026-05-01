@@ -533,7 +533,7 @@ export function initApp(): void {
           <button type="button" id="btn-calculate" class="btn btn-calculate btn-ripple">Рассчитать</button>
           <button type="button" id="btn-reset" class="btn btn-reset" aria-label="Сбросить ввод">↺</button>
         </div>
-        <div id="results-content"></div>
+        <div id="results-content" aria-live="polite" aria-atomic="true"></div>
       </section>
     </main>
   `;
