@@ -1,0 +1,24 @@
+Build and baseline tests: PASS
+Running e2e tests output:
+
+> app@0.1.0 test:e2e
+> playwright test
+
+
+Running 13 tests using 2 workers
+
+  ✓   1 [chromium] › e2e/state.spec.ts:7:3 › State persistence module › load/save round-trip (323ms)
+  ✓   3 [chromium] › e2e/state.spec.ts:34:3 › State persistence module › invalid JSON returns null on parse (76ms)
+  ✓   4 [chromium] › e2e/state.spec.ts:50:3 › State persistence module › invalid schema does not load (76ms)
+  ✓   5 [chromium] › e2e/state.spec.ts:66:3 › State persistence module › localStorage throws → app still works (99ms)
+  ✓   6 [chromium] › e2e/state.spec.ts:84:3 › State persistence module › clearState removes key from localStorage (70ms)
+  ✓   2 [chromium] › e2e/baseline.spec.ts:10:3 › Baseline — current app functionality › page loads without console errors (827ms)
+  ✓   7 [chromium] › e2e/baseline.spec.ts:21:3 › Baseline — current app functionality › app renders main sections (96ms)
+  ✓   8 [chromium] › e2e/baseline.spec.ts:28:3 › Baseline — current app functionality › hole card pickers render (2 slots) (79ms)
+  ✓   9 [chromium] › e2e/baseline.spec.ts:33:3 › Baseline — current app functionality › calculate button exists and is clickable (123ms)
+  ✓  10 [chromium] › e2e/baseline.spec.ts:40:3 › Baseline — current app functionality › theme toggle works (94ms)
+  ✓  11 [chromium] › e2e/baseline.spec.ts:48:3 › Baseline — current app functionality › results show after selecting 2 hole cards and calculating (938ms)
+  ✓  12 [chromium] › e2e/baseline.spec.ts:75:3 › Baseline — current app functionality › russian text visible correctly (89ms)
+  ✓  13 [chromium] › e2e/baseline.spec.ts:80:3 › Baseline — current app functionality › accessibility checks (112ms)
+
+  13 passed (3.2s)
