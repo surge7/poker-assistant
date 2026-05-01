@@ -8,6 +8,7 @@ import {
   POSITION_NAMES,
   type Card,
 } from '@poker/core';
+import { impactLight, selectionChanged, notificationWarning } from './haptics';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = ['s', 'h', 'd', 'c'];
@@ -283,6 +284,7 @@ function buildCardPickerSlot(
         btn.disabled = taken.has(card);
       });
       updatePreview();
+      selectionChanged();
     });
   });
 
@@ -293,6 +295,7 @@ function buildCardPickerSlot(
       pendingSuit = btn.dataset.suit ?? '';
       setActiveSuit(pendingSuit);
       updatePreview();
+      selectionChanged();
     });
   });
 
@@ -313,6 +316,7 @@ function buildCardPickerSlot(
     rank.dispatchEvent(new Event('change', { bubbles: true }));
     suit.dispatchEvent(new Event('change', { bubbles: true }));
     updatePickerDisplay(idPrefix, slotIndex);
+    impactLight();
     closePopover();
   });
 
@@ -543,6 +547,7 @@ export function initApp(): void {
       (document.getElementById('num-players') as HTMLInputElement).value = n;
       document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('player-chip--active'));
       chip.classList.add('player-chip--active');
+      selectionChanged();
     });
   });
 
@@ -580,6 +585,7 @@ export function initApp(): void {
       (document.getElementById('position') as HTMLInputElement).value = pos;
       document.querySelectorAll('.position-chip').forEach(c => c.classList.remove('position-chip--active'));
       chip.classList.add('position-chip--active');
+      selectionChanged();
     });
   });
 
@@ -631,6 +637,7 @@ export function initApp(): void {
     themeToggle.addEventListener('click', () => {
       const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       applyTheme(next);
+      impactLight();
     });
   }
 
@@ -665,7 +672,7 @@ export function initApp(): void {
 
   const resultsContent = document.getElementById('results-content')!;
 
-  function updateResults(): void {
+  function updateResults(triggeredByUser = false): void {
     const holeCards = readCardSelects(holeContainer, 'hole');
     const boardCards = readCardSelects(boardContainer, 'board');
     const positionIndex = Math.min(5, Math.max(0, parseInt((document.getElementById('position') as HTMLSelectElement).value, 10) || 0));
@@ -674,6 +681,7 @@ export function initApp(): void {
     const toCall = parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0;
 
     if (holeCards.length !== 2) {
+      if (triggeredByUser) notificationWarning();
       resultsContent.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
@@ -692,6 +700,7 @@ export function initApp(): void {
 
     const allCards = [...holeCards, ...boardCards];
     if (new Set(allCards).size !== allCards.length) {
+      if (triggeredByUser) notificationWarning();
       resultsContent.innerHTML = `
         <div class="error-state">
           <div class="error-state-icon">
@@ -800,7 +809,10 @@ export function initApp(): void {
   }
 
   const btnCalculate = document.getElementById('btn-calculate');
-  if (btnCalculate) btnCalculate.addEventListener('click', updateResults);
+  if (btnCalculate) btnCalculate.addEventListener('click', () => {
+    impactLight();
+    updateResults(true);
+  });
 
   updateResults();
 }
