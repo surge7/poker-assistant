@@ -191,21 +191,28 @@ body {
 .main {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
 .section {
-  background: var(--surface);
-  border-radius: 6px;
-  padding: 0.6rem;
-  border: 1px solid var(--border);
+  background: var(--felt-700);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card-rest);
+}
+
+.section-board {
+  background: var(--felt-800);
 }
 
 .section h2 {
-  margin: 0 0 0.4rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--muted);
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gold-300);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .card-row {
