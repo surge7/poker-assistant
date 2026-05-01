@@ -45,7 +45,7 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   overflow-x: hidden;
-  -webkit-tap-highlight-color: rgba(63, 185, 80, 0.2);
+  -webkit-tap-highlight-color: rgba(63, 185, 80, 0.12);
 }
 
 #app {
@@ -258,7 +258,7 @@ body {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-card-rest);
 }
 
 .hole-cards-col .card-picker-trigger {
@@ -271,7 +271,7 @@ body {
 }
 
 .hole-cards-col .card-picker-wrap.card-picker-wrap--red-suit .card-picker-trigger {
-  color: #c41e3a;
+  color: var(--suit-red);
 }
 
 /* Пикер карт: скрытые select, триггер + попап с сеткой */
@@ -456,7 +456,7 @@ body {
 .picker-suit-btn--active {
   border-color: var(--gold-400);
   border-width: 2px;
-  background: rgba(212, 165, 71, 0.15);
+  background: rgba(212, 165, 71, 0.12);
 }
 
 .picker-suit-btn:disabled {
@@ -785,7 +785,7 @@ body {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-popover);
   z-index: 10;
 }
 
