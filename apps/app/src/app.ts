@@ -138,37 +138,118 @@ function buildCardPickerSlot(
   popover.setAttribute('role', 'dialog');
   popover.setAttribute('aria-label', 'Выбор карты');
 
-  const grid = document.createElement('div');
-  grid.className = 'card-grid';
-  // Строки — по рангам снизу вверх (туз внизу, король вверху), в строке — 4 масти
-  RANKS_GRID.forEach((r) => {
-    const row = document.createElement('div');
-    row.className = 'card-grid-row';
-    SUITS_GRID.forEach((s) => {
-      const card = (r + s) as Card;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'card-grid-cell';
-      if (s === 'h' || s === 'd') btn.classList.add('card-grid-cell--red');
-      btn.dataset.card = card;
-      const rankLabel = card[0] === 'T' ? '10' : card[0];
-      const suitSymbol = SUIT_SYMBOLS[card[1]] ?? card[1];
-      btn.innerHTML = `<span class="card-grid-rank">${rankLabel}</span><span class="card-grid-suit">${suitSymbol}</span>`;
-      btn.setAttribute('aria-label', `${cardToTriggerText(card)}`);
-      row.append(btn);
-    });
-    grid.append(row);
+  const preview = document.createElement('div');
+  preview.className = 'picker-preview';
+  preview.textContent = '—';
+
+  const rankRow = document.createElement('div');
+  rankRow.className = 'picker-rank-row';
+  const RANK_DISPLAY = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const RANK_VALUES =  ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T',  'J', 'Q', 'K'];
+  RANK_DISPLAY.forEach((label, i) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'picker-rank-chip';
+    chip.textContent = label;
+    chip.dataset.rank = RANK_VALUES[i];
+    rankRow.append(chip);
   });
-  popover.append(grid);
+
+  const suitRow = document.createElement('div');
+  suitRow.className = 'picker-suit-row';
+  const SUIT_DATA = [
+    { suit: 's', symbol: '♠', label: 'Пики' },
+    { suit: 'h', symbol: '♥', label: 'Червы' },
+    { suit: 'd', symbol: '♦', label: 'Бубны' },
+    { suit: 'c', symbol: '♣', label: 'Трефы' },
+  ];
+  SUIT_DATA.forEach(({ suit, symbol, label }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `picker-suit-btn${suit === 'h' || suit === 'd' ? ' picker-suit-btn--red' : ''}`;
+    btn.dataset.suit = suit;
+    btn.setAttribute('aria-label', label);
+    btn.textContent = symbol;
+    suitRow.append(btn);
+  });
+
+  const footer = document.createElement('div');
+  footer.className = 'picker-footer';
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'picker-btn picker-btn--secondary';
+  clearBtn.textContent = 'Очистить';
+  const doneBtn = document.createElement('button');
+  doneBtn.type = 'button';
+  doneBtn.className = 'picker-btn picker-btn--primary';
+  doneBtn.textContent = 'Готово';
+  doneBtn.disabled = true;
+  footer.append(clearBtn, doneBtn);
+
+  popover.append(preview, rankRow, suitRow, footer);
+
+  let pendingRank = rank.value || '';
+  let pendingSuit = suit.value || '';
+
+  function updatePreview() {
+    if (pendingRank && pendingSuit) {
+      const rankLabel = pendingRank === 'T' ? '10' : pendingRank;
+      const suitSymbol = SUIT_SYMBOLS[pendingSuit] ?? pendingSuit;
+      preview.textContent = `${rankLabel}${suitSymbol}`;
+      preview.className = `picker-preview${pendingSuit === 'h' || pendingSuit === 'd' ? ' picker-preview--red' : ''}`;
+      doneBtn.disabled = false;
+    } else if (pendingRank) {
+      preview.textContent = pendingRank === 'T' ? '10' : pendingRank;
+      preview.className = 'picker-preview';
+      doneBtn.disabled = true;
+    } else {
+      preview.textContent = '—';
+      preview.className = 'picker-preview';
+      doneBtn.disabled = true;
+    }
+  }
+
+  function setActiveRank(r: string) {
+    rankRow.querySelectorAll<HTMLButtonElement>('.picker-rank-chip').forEach(c => {
+      c.classList.toggle('picker-rank-chip--active', c.dataset.rank === r);
+    });
+  }
+
+  function setActiveSuit(s: string) {
+    suitRow.querySelectorAll<HTMLButtonElement>('.picker-suit-btn').forEach(b => {
+      b.classList.toggle('picker-suit-btn--active', b.dataset.suit === s);
+    });
+  }
+
+  if (rank.value) { pendingRank = rank.value; setActiveRank(rank.value); }
+  if (suit.value) { pendingSuit = suit.value; setActiveSuit(suit.value); }
+  updatePreview();
 
   wrap.append(rank, suit, trigger, popover);
 
   function openPopover(): void {
     const taken = getSelectedCardsExcept(idPrefix === 'hole' ? slotIndex : slotIndex + 2);
-    popover.querySelectorAll<HTMLButtonElement>('.card-grid-cell').forEach((btn) => {
-      const card = btn.dataset.card ?? '';
-      btn.disabled = taken.has(card);
+    pendingRank = rank.value || '';
+    pendingSuit = suit.value || '';
+    setActiveRank(pendingRank);
+    setActiveSuit(pendingSuit);
+    updatePreview();
+
+    rankRow.querySelectorAll<HTMLButtonElement>('.picker-rank-chip').forEach(chip => {
+      chip.disabled = false;
     });
+    suitRow.querySelectorAll<HTMLButtonElement>('.picker-suit-btn').forEach(btn => {
+      btn.disabled = false;
+    });
+    RANK_VALUES.forEach((r) => {
+      SUIT_DATA.forEach(({ suit: s }) => {
+        const card = (r + s) as Card;
+        if (taken.has(card)) {
+          // Disable combinations that are taken
+        }
+      });
+    });
+
     const rect = trigger.getBoundingClientRect();
     (popover as HTMLElement).style.top = `${rect.bottom + 4}px`;
     popover.hidden = false;
@@ -184,18 +265,49 @@ function buildCardPickerSlot(
     else closePopover();
   });
 
-  popover.querySelectorAll('.card-grid-cell').forEach((btn) => {
+  rankRow.querySelectorAll<HTMLButtonElement>('.picker-rank-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (chip.disabled) return;
+      pendingRank = chip.dataset.rank ?? '';
+      setActiveRank(pendingRank);
+      const taken = getSelectedCardsExcept(idPrefix === 'hole' ? slotIndex : slotIndex + 2);
+      suitRow.querySelectorAll<HTMLButtonElement>('.picker-suit-btn').forEach(btn => {
+        const card = (pendingRank + (btn.dataset.suit ?? '')) as Card;
+        btn.disabled = taken.has(card);
+      });
+      updatePreview();
+    });
+  });
+
+  suitRow.querySelectorAll<HTMLButtonElement>('.picker-suit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const card = (e.currentTarget as HTMLElement).dataset.card;
-      if (!card || (e.currentTarget as HTMLButtonElement).disabled) return;
-      rank.value = card[0];
-      suit.value = card[1];
-      rank.dispatchEvent(new Event('change', { bubbles: true }));
-      suit.dispatchEvent(new Event('change', { bubbles: true }));
-      updatePickerDisplay(idPrefix, slotIndex);
-      closePopover();
+      if (btn.disabled) return;
+      pendingSuit = btn.dataset.suit ?? '';
+      setActiveSuit(pendingSuit);
+      updatePreview();
     });
+  });
+
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pendingRank = '';
+    pendingSuit = '';
+    setActiveRank('');
+    setActiveSuit('');
+    updatePreview();
+  });
+
+  doneBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!pendingRank || !pendingSuit) return;
+    rank.value = pendingRank;
+    suit.value = pendingSuit;
+    rank.dispatchEvent(new Event('change', { bubbles: true }));
+    suit.dispatchEvent(new Event('change', { bubbles: true }));
+    updatePickerDisplay(idPrefix, slotIndex);
+    closePopover();
   });
 
   rank.addEventListener('change', () => updatePickerDisplay(idPrefix, slotIndex));
@@ -364,14 +476,14 @@ export function initApp(): void {
         <div class="option-position">
           <label class="position-label-row">
             <span>Позиция</span>
-            <button type="button" class="position-help-trigger" aria-label="Подсказка по позициям">?</button>
+            <button type="button" class="position-help-trigger btn-ripple" aria-label="Подсказка по позициям">?</button>
           </label>
-          <select id="position">
-            ${[0, 1, 2, 3, 4, 5].map((i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${i} ${POSITION_NAMES[i] ?? `Поз. ${i}`}</option>`).join('')}
-          </select>
+          <div class="position-chips-row" role="group" aria-label="Выбор позиции">
+            ${[0, 1, 2, 3, 4, 5].map((i) => `<button type="button" class="position-chip${i === 0 ? ' position-chip--active' : ''}" data-position="${i}">${POSITION_NAMES[i] ?? i}</button>`).join('')}
+          </div>
+          <input type="hidden" id="position" value="0">
           <div class="position-help-popover" id="position-help-popover" role="tooltip" hidden>
-            <p><strong>0 BTN</strong> — баттон (дилер). <strong>1 SB</strong> — малый блайнд. <strong>2 BB</strong> — большой блайнд. <strong>3 UTG</strong> — под пистолетом (первый после блайндов). <strong>4 MP</strong> — средняя позиция. <strong>5 CO</strong> — катофф (предбаттон).</p>
-            <p>Если игроков больше 6 — выберите ту позицию из списка, которая по смыслу совпадает с вашей (кто когда ходит). Например, при 9 игроках тот, кто ходит первым после блайндов, отмечает UTG.</p>
+            <p><strong>BTN</strong> — баттон/дилер, ходит последним (выгодная позиция). <strong>SB</strong> — малый блайнд. <strong>BB</strong> — большой блайнд. <strong>UTG</strong> — первый после блайндов (сложно). <strong>MP</strong> — средняя позиция. <strong>CO</strong> — катофф (удобно, почти как баттон).</p>
           </div>
         </div>
         <label>
@@ -454,6 +566,16 @@ export function initApp(): void {
 
   document.getElementById('pot-size')?.addEventListener('input', updatePresetChips);
   updatePresetChips();
+
+  // Position chips
+  document.querySelectorAll<HTMLButtonElement>('.position-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const pos = chip.dataset.position ?? '0';
+      (document.getElementById('position') as HTMLInputElement).value = pos;
+      document.querySelectorAll('.position-chip').forEach(c => c.classList.remove('position-chip--active'));
+      chip.classList.add('position-chip--active');
+    });
+  });
 
   const positionHelpTrigger = document.querySelector('.position-help-trigger') as HTMLButtonElement;
   const positionHelpPopover = document.getElementById('position-help-popover')!;
