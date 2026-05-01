@@ -547,27 +547,26 @@ body {
   color: var(--muted);
 }
 
-/* Борд: слева «Борд», справа одна сетка — подписи, скобки над картами, карты */
 .board-inner {
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .board-title {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding-top: 0.1rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gold-300);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .board-main {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-1);
   min-width: 0;
-  margin-left: 2.5rem;
 }
 
 .board-cards-row {
@@ -576,47 +575,24 @@ body {
   gap: var(--space-2);
 }
 
-/* Высота как у селектов «Карты в руке» (1.4rem + padding) */
+/* Карта борда — наследует «лицо» от .card-picker-trigger (T10) */
 .board-card {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 0.1rem;
-  min-width: 2.5rem;
-  width: 2.5rem;
-  min-height: 1.7rem;
-  padding: 0.15rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.board-card .card-picker-trigger {
-  width: 100%;
   min-width: 0;
-  min-height: 1.4rem;
-  padding: 0.12rem 0.15rem;
-  font-size: 0.75rem;
-  line-height: 1.1;
 }
 
-/* Красные масти (черви, буби) */
-.board-card.board-card--red-suit .card-picker-trigger {
-  color: #c41e3a;
-}
-
-/* 7 колонок: Флоп (1–3), промежуток, Терн (5), промежуток, Ривер (7) */
+/* 5 колонок под Флоп(3) Терн(1) Ривер(1) — выровнено с .board-cards-row */
 .board-labels,
 .board-brackets {
   display: grid;
-  grid-template-columns: 2.5rem 2.5rem 2.5rem 0.5rem 2.5rem 0.5rem 2.5rem;
-  gap: 0.25rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
 }
 
 .board-brackets {
-  margin-bottom: 0.05rem;
+  margin-bottom: 0;
 }
 
 .board-stage {
@@ -631,11 +607,11 @@ body {
 }
 
 .board-stage-turn {
-  grid-column: 5 / 6;
+  grid-column: 4 / 5;
 }
 
 .board-stage-river {
-  grid-column: 7 / 8;
+  grid-column: 5 / 6;
 }
 
 .board-bracket {
@@ -1442,4 +1418,52 @@ body {
   .message {
     font-size: 0.75rem;
   }
+}
+
+/* T16: Empty / error states */
+.empty-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.empty-state-icon,
+.error-state-icon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gold-400);
+}
+
+.empty-state-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: 280px;
+  line-height: var(--line-height-relaxed);
+}
+
+.error-state-icon {
+  color: var(--state-warning);
+  opacity: 1;
+}
+
+.error-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--state-warning);
+}
+
+.error-state-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  max-width: 280px;
+  line-height: var(--line-height-relaxed);
 }
