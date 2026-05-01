@@ -1,0 +1,202 @@
+/* ============================================================
+   POKER ASSISTANT — Design Tokens
+   Variant A: Classic Felt + Amber Gold
+   Generated: T2 task, ui-redesign plan
+   ============================================================ */
+
+/* @font-face blocks will be added by T3 task */
+
+/* ============================================================
+   DARK THEME (default — :root)
+   ============================================================ */
+:root,
+[data-theme="dark"] {
+
+  /* --- Colors: Felt surfaces (dark → light) --- */
+  --felt-900: #0d2818;   /* body background — deepest green */
+  --felt-800: #112a1c;   /* section background */
+  --felt-700: #1a3d28;   /* card/panel surface */
+  --felt-600: #22522f;   /* interactive hover surface */
+
+  /* --- Colors: Gold accents (warm amber) --- */
+  --gold-500: #b8862a;   /* deep gold / borders */
+  --gold-400: #d4a547;   /* primary gold accent */
+  --gold-300: #e6c067;   /* bright gold / headings */
+
+  /* --- Colors: Semantic --- */
+  --state-success:  #52c97a;   /* green — positive equity, call */
+  --state-warning:  #e6a020;   /* amber — warning, check */
+  --state-danger:   #e05656;   /* red — fold, error */
+
+  /* --- Colors: Text --- */
+  --text-primary:   #e6f0e8;   /* main text */
+  --text-secondary: #9fbfa8;   /* secondary / labels */
+  --text-muted:     #5c7a62;   /* placeholders, metadata */
+
+  /* --- Colors: Suits --- */
+  --suit-red:   #d44040;   /* hearts & diamonds */
+  --suit-black: #9fbfa8;   /* spades & clubs */
+
+  /* --- Colors: Card face --- */
+  --card-face:        #f5f0e8;   /* card background (warm white) */
+  --card-face-border: rgba(0, 0, 0, 0.15);
+
+  /* --- Colors: Surface overlay --- */
+  --surface-overlay: rgba(245, 240, 232, 0.07);  /* glass-like on felt */
+
+  /* --- Colors: Borders --- */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(212, 165, 71, 0.30);   /* gold-tinted border */
+
+  /* --- Shadows (NOT to be animated!) --- */
+  --shadow-card-rest:    0 2px 8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover:   0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-popover:      0 8px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-felt-inset:   inset 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* --- Spacing scale (4px base) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* --- Border radius --- */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+
+  /* --- Typography --- */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --font-size-xs:   12px;
+  --font-size-sm:   13px;
+  --font-size-base: 15px;
+  --font-size-lg:   17px;
+  --font-size-xl:   20px;
+  --font-size-2xl:  24px;
+  --font-size-3xl:  32px;
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --line-height-tight:   1.2;
+  --line-height-base:    1.5;
+  --line-height-relaxed: 1.7;
+
+  /* --- Motion --- */
+  --motion-instant: 100ms;
+  --motion-fast:    150ms;
+  --motion-base:    250ms;
+  --motion-slow:    400ms;
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* --- Z-index --- */
+  --z-base:    1;
+  --z-popover: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+}
+
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
+[data-theme="light"] {
+
+  /* --- Colors: Felt surfaces (light tournament table) --- */
+  --felt-900: #f0f5f1;   /* body background */
+  --felt-800: #ffffff;   /* section background */
+  --felt-700: #e8f0ea;   /* card/panel surface */
+  --felt-600: #d6e8da;   /* interactive hover */
+
+  /* --- Colors: Gold accents (slightly richer in light) --- */
+  --gold-500: #9a6e1c;
+  --gold-400: #b8862a;
+  --gold-300: #d4a547;
+
+  /* --- Colors: Semantic --- */
+  --state-success:  #1a8a3a;
+  --state-warning:  #c0780a;
+  --state-danger:   #b83030;
+
+  /* --- Colors: Text --- */
+  --text-primary:   #1a2e1e;
+  --text-secondary: #3a5e42;
+  --text-muted:     #5a7a62;
+
+  /* --- Colors: Suits --- */
+  --suit-red:   #b03030;
+  --suit-black: #1a3a2a;
+
+  /* --- Colors: Card face --- */
+  --card-face:        #ffffff;
+  --card-face-border: rgba(0, 0, 0, 0.12);
+
+  /* --- Colors: Surface overlay --- */
+  --surface-overlay: rgba(0, 0, 0, 0.04);
+
+  /* --- Colors: Borders --- */
+  --border-subtle: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(184, 134, 42, 0.40);
+
+  /* --- Shadows --- */
+  --shadow-card-rest:    0 1px 4px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover:   0 2px 8px rgba(0, 0, 0, 0.20), 0 1px 2px rgba(0, 0, 0, 0.10);
+  --shadow-popover:      0 4px 20px rgba(0, 0, 0, 0.20), 0 1px 4px rgba(0, 0, 0, 0.10);
+  --shadow-felt-inset:   inset 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  /* Spacing, radius, typography, motion, z-index: same as dark */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --font-size-xs:   12px;
+  --font-size-sm:   13px;
+  --font-size-base: 15px;
+  --font-size-lg:   17px;
+  --font-size-xl:   20px;
+  --font-size-2xl:  24px;
+  --font-size-3xl:  32px;
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --line-height-tight:   1.2;
+  --line-height-base:    1.5;
+  --line-height-relaxed: 1.7;
+
+  --motion-instant: 100ms;
+  --motion-fast:    150ms;
+  --motion-base:    250ms;
+  --motion-slow:    400ms;
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --z-base:    1;
+  --z-popover: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+}
