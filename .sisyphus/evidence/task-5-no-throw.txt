@@ -1,1 +1,0 @@
-Functions never throw: PASS

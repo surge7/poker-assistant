@@ -29,3 +29,12 @@ coverage/
 # Android build (android/ has its own .gitignore; root-level backup)
 *.apk
 *.aab
+
+# Agent/tooling artifacts (task trackers, evidence, temp screenshots)
+.omo/
+.sisyphus/
+.playwright-mcp/
+.venv-excel/
+
+# Temporary screenshots
+/tmp/*.png
