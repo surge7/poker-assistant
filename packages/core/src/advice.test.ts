@@ -107,4 +107,36 @@ describe('getAdvice', () => {
       expect(result.reason).toContain('две карты');
     });
   });
+
+  describe('ривер — финал, никаких будущих карт', () => {
+    it('на ривере с флеш-дро совет не упоминает ауты или шансы улучшения', () => {
+      // 4 червы (2 в руке + 2 на борде) — незавершённое флеш-дро, но на ривере карт больше не будет.
+      const riverCtx: TableContext = {
+        phase: 'river',
+        holeCards: ['Ah', 'Kh'],
+        board: ['7h', '2h', '9c', '3d', '5s'],
+        potSize: 100,
+        toCall: 30,
+        numPlayers: 6,
+        positionIndex: 0,
+      };
+      const result = getAdvice(riverCtx);
+      expect(result.reason).not.toMatch(/аут|улучшени/i);
+    });
+
+    it('на ривере эквити 100% (натс) — совет без упоминания дро', () => {
+      const riverCtx: TableContext = {
+        phase: 'river',
+        holeCards: ['Ks', 'Qs'],
+        board: ['Js', 'Ts', '9s', '2c', '3d'], // стрит-флеш — натс
+        potSize: 150,
+        toCall: 50,
+        numPlayers: 6,
+        positionIndex: 0,
+      };
+      const result = getAdvice(riverCtx);
+      expect(result.action).toBe('raise');
+      expect(result.reason).not.toMatch(/аут|улучшени/i);
+    });
+  });
 });

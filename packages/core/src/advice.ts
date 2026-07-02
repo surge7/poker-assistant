@@ -53,7 +53,10 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   }
 
   const strength = evaluatePlayerHand(holeCards, board);
-  const { total: outs, improveChance } = totalOuts(holeCards, board);
+  // Ауты имеют смысл только на флопе/терне; на ривере новых карт не будет.
+  const { total: outs, improveChance } = board.length >= 3 && board.length < 5
+    ? totalOuts(holeCards, board)
+    : { total: 0, improveChance: 0 };
   const eq = eqFromCtx != null ? eqFromCtx : equityPercent(holeCards, board, numPlayers - 1, 300);
   const { isNuts } = compareToNuts(holeCards, board);
 
@@ -113,10 +116,14 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     eq < foldBarPct
   ) {
     const potNote = requiredEquityPct > 40 ? ' Ставка велика относительно банка — фолд разумнее.' : '';
+    // На ривере аутов не существует (карт больше не будет) — не упоминаем их в причине.
+    const weakHandNote = board.length >= 5
+      ? 'Слабая рука'
+      : `Слабая рука и мало аутов`;
     return {
       action: 'fold',
       confidence: latePos ? 0.7 : 0.75,
-      reason: `Слабая рука и мало аутов, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}`,
+      reason: `${weakHandNote}, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}`,
     };
   }
 
