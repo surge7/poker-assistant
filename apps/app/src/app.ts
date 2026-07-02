@@ -29,24 +29,14 @@ const RANK_LABELS: Record<string, string> = {
   A: 'A (туз)',
 };
 
-/** Unicode Playing Cards: код символа карты (🂡…🃏) */
-function cardToUnicode(card: Card): string {
-  const rankChar = card[0];
-  const suitChar = card[1];
-  const rankNum = rankChar === 'A' ? 1 : rankChar === 'T' ? 10 : rankChar === 'J' ? 11 : rankChar === 'Q' ? 12 : rankChar === 'K' ? 13 : parseInt(rankChar, 10);
-  const suitOffset = suitChar === 's' ? 0 : suitChar === 'h' ? 16 : suitChar === 'd' ? 32 : 48;
-  const code = 0x1f0a0 + suitOffset + rankNum;
-  return String.fromCodePoint(code);
-}
-
-/** Карта как HTML: символ карты (картинка) + текст с цветной мастью */
+/** Карта как HTML: настоящая игральная карта — ранг+масть в углах, крупная масть по центру */
 function cardToHtml(card: Card): string {
   const rank = card[0] === 'T' ? '10' : card[0];
   const suit = card[1];
   const symbol = SUIT_SYMBOLS[suit] ?? suit;
   const suitClass = `suit suit-${suit}`;
-  const cardChar = cardToUnicode(card);
-  return `<span class="card-display" title="${rank}${symbol}"><span class="card-char" aria-hidden="true">${cardChar}</span><span class="card-text">${rank}<span class="${suitClass}">${symbol}</span></span></span>`;
+  const corner = `${rank}<span class="${suitClass}">${symbol}</span>`;
+  return `<span class="card-display" title="${rank}${symbol}"><span class="card-face"><span class="card-corner card-corner--tl">${corner}</span><span class="card-pip suit-${suit}" aria-hidden="true">${symbol}</span><span class="card-corner card-corner--br">${corner}</span></span></span>`;
 }
 
 function getPhase(boardLength: number): 'preflop' | 'flop' | 'turn' | 'river' {
@@ -441,6 +431,10 @@ export function initApp(): void {
         <span class="header-title">Покерный тренажёр</span>
       </div>
       <div class="header-controls">
+        <button type="button" class="hand-toggle btn-ripple" id="hand-toggle" aria-label="Скрыть/показать руку" title="Скрыть/показать руку">
+          <span class="hand-toggle-icon hand-toggle-icon--visible" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <span class="hand-toggle-icon hand-toggle-icon--hidden" aria-hidden="true" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
+        </button>
         <button type="button" class="title-help-trigger btn-ripple" aria-label="Инструкция">?</button>
         <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
           <p>Это тренажёр Texas Hold'em. Введите свои карты и борд, выберите позицию, укажите банк и сумму колла — и нажмите «Рассчитать». Вы получите совет, эквити и подсказки по аутам.</p>
@@ -580,11 +574,26 @@ export function initApp(): void {
     });
     (document.getElementById('pot-size') as HTMLInputElement).value = String(state.potSize);
     (document.getElementById('to-call') as HTMLInputElement).value = String(state.toCall);
+    applyHandHidden(state.handHidden);
+  }
+
+  /** Применить режим скрытия руки: атрибут на корне + переключение иконки. */
+  function applyHandHidden(hidden: boolean): void {
+    app!.setAttribute('data-hand-hidden', String(hidden));
+    const iconVisible = document.querySelector('.hand-toggle-icon--visible') as HTMLElement | null;
+    const iconHidden = document.querySelector('.hand-toggle-icon--hidden') as HTMLElement | null;
+    const btn = document.getElementById('hand-toggle');
+    if (iconVisible) iconVisible.hidden = hidden;
+    if (iconHidden) iconHidden.hidden = !hidden;
+    if (btn) btn.setAttribute('aria-pressed', String(hidden));
   }
 
   const savedState = loadState();
   if (savedState) {
     applyState(savedState);
+  } else {
+    // Дефолт: рука видима
+    applyHandHidden(false);
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -613,6 +622,7 @@ export function initApp(): void {
         numPlayers: parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6,
         potSize: parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0,
         toCall: parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0,
+        handHidden: app!.getAttribute('data-hand-hidden') === 'true',
       });
     }, 300);
   }
@@ -731,6 +741,17 @@ export function initApp(): void {
     });
   }
 
+  // Скрытие руки (приватность): переключатель-глаз в шапке
+  const handToggle = document.getElementById('hand-toggle');
+  if (handToggle) {
+    handToggle.addEventListener('click', () => {
+      const next = app.getAttribute('data-hand-hidden') !== 'true';
+      applyHandHidden(next);
+      impactLight();
+      debouncedSave();
+    });
+  }
+
   document.querySelectorAll('.step-up').forEach((btn) => {
     btn.addEventListener('click', () => {
       const wrap = (btn as HTMLElement).closest('.input-with-step');
@@ -811,8 +832,8 @@ export function initApp(): void {
     const board = boardCards;
 
     const strength = evaluatePlayerHand(holeCards, board);
-    const outsList = board.length >= 3 ? countOuts(holeCards, board) : [];
-    const { total: totalOutsCount, improveChance } = board.length >= 3 ? totalOuts(holeCards, board) : { total: 0, improveChance: 0 };
+    const outsList = board.length >= 3 && board.length < 5 ? countOuts(holeCards, board) : [];
+    const { total: totalOutsCount, improveChance } = board.length >= 3 && board.length < 5 ? totalOuts(holeCards, board) : { total: 0, improveChance: 0 };
     const iterationsAllIn = board.length === 0 ? 800 : 500;
     const eqRange = equityPercentRange(holeCards, board, numPlayers - 1, iterationsAllIn);
     const nutsInfo = board.length === 5 ? compareToNuts(holeCards, board) : null;
@@ -863,7 +884,7 @@ export function initApp(): void {
       </div>
     `;
 
-    if (board.length >= 3) {
+    if (board.length >= 3 && board.length < 5) {
       html += `
         <details class="results-details">
           <summary>Ауты${totalOutsCount > 0 ? ` (${totalOutsCount})` : ''}</summary>
@@ -874,6 +895,11 @@ export function initApp(): void {
             }).join('') : '<p>Нет явных дро.</p>'}
           </div>
         </details>
+      `;
+    }
+
+    if (board.length >= 3) {
+      html += `
         <details class="results-details">
           <summary>Эквити</summary>
           <div class="results-details-body">
@@ -901,7 +927,21 @@ export function initApp(): void {
   const btnCalculate = document.getElementById('btn-calculate');
   if (btnCalculate) btnCalculate.addEventListener('click', () => {
     impactLight();
-    updateResults(true);
+    const btn = btnCalculate as HTMLButtonElement;
+    // Показваем loading-состояние до тяжёлого синхронного расчёта эквити.
+    // Двойной rAF отдаёт кадр браузеру, чтобы он успел отрисовать спиннер.
+    btn.classList.add('is-calculating');
+    btn.disabled = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          updateResults(true);
+        } finally {
+          btn.classList.remove('is-calculating');
+          btn.disabled = false;
+        }
+      });
+    });
   });
 
   const btnReset = document.getElementById('btn-reset');

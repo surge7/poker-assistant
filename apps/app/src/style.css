@@ -49,7 +49,7 @@ body {
 }
 
 #app {
-  max-width: 480px;
+  max-width: 400px;
   margin: 0 auto;
   padding: var(--space-2);
   padding-left: max(var(--space-2), env(safe-area-inset-left));
@@ -107,8 +107,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   color: var(--text-secondary);
   background: var(--felt-700);
@@ -127,6 +127,30 @@ body {
   height: 18px;
 }
 
+/* Кнопка-глаз: скрытие руки (приватность) — единый стиль с theme-toggle */
+.hand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: var(--felt-700);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.hand-toggle:hover { opacity: 0.8; }
+.hand-toggle svg { width: 18px; height: 18px; }
+
+.hand-toggle[aria-pressed="true"] {
+  color: var(--gold-400);
+  border-color: var(--border-strong);
+}
+
 .theme-icon {
   display: inline-flex;
   align-items: center;
@@ -141,8 +165,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -226,7 +250,7 @@ body {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 3rem;
+  gap: var(--space-4);
   align-items: center;
 }
 
@@ -234,44 +258,55 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .hole-card-label {
-  font-size: 0.72rem;
-  font-weight: 400;
-  color: var(--muted);
-  min-width: 5.5rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-muted);
+  min-width: 4.5rem;
 }
 
-/* Карты в руке — такие же по размеру и виду, как контролы на борде */
+/* Карты в руке — такие же по размеру и виду, как контролы на борде.
+   Базовый размер/шрифт задаёт .card-picker-wrap / .card-picker-trigger;
+   здесь только цвет масти и при необходимости — отступы между картой и подписью. */
 .hole-cards-col .card-picker-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.1rem;
-  min-width: 2.5rem;
-  width: 2.5rem;
-  min-height: 1.7rem;
-  padding: 0.15rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: var(--shadow-card-rest);
-}
-
-.hole-cards-col .card-picker-trigger {
-  width: 100%;
-  min-width: 0;
-  min-height: 1.4rem;
-  padding: 0.12rem 0.15rem;
-  font-size: 0.75rem;
-  line-height: 1.1;
+  gap: var(--space-1);
 }
 
 .hole-cards-col .card-picker-wrap.card-picker-wrap--red-suit .card-picker-trigger {
   color: var(--suit-red);
+}
+
+/* ——— Режим скрытия руки (приватность) ——— */
+/* Заполненные карты руки заменяются рубашкой, результат скрывается. */
+[data-hand-hidden="true"] #results-content { display: none; }
+
+[data-hand-hidden="true"] #hole-cards .card-picker-trigger:not(.card-picker-trigger--empty) {
+  color: transparent;                 /* спрятать ранг/масть */
+  background: repeating-linear-gradient(
+    45deg,
+    var(--felt-600) 0,
+    var(--felt-600) 4px,
+    var(--felt-700) 4px,
+    var(--felt-700) 8px
+  );
+  border-color: var(--border-strong);
+  position: relative;
+}
+
+/* Символ карты-рубашки поверх узора */
+[data-hand-hidden="true"] #hole-cards .card-picker-trigger:not(.card-picker-trigger--empty)::before {
+  content: '\1F0A0';                   /* 🂠 — обратная сторона карты */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-400);
+  opacity: 0.45;
+  font-family: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
 }
 
 /* Пикер карт: скрытые select, триггер + попап с сеткой */
@@ -297,9 +332,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 80px;
-  min-width: 56px;
+  width: 46px;
+  height: 66px;
+  min-width: 46px;
   padding: var(--space-1);
   background: var(--card-face);
   color: var(--text-primary);
@@ -368,7 +403,7 @@ body {
   text-align: center;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  min-height: 40px;
+  min-height: 34px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -397,8 +432,8 @@ body {
 .picker-rank-chip {
   flex-shrink: 0;
   scroll-snap-align: start;
-  min-width: 40px;
-  height: 44px;
+  min-width: 34px;
+  height: 38px;
   padding: 0 var(--space-1);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -435,8 +470,8 @@ body {
 
 .picker-suit-btn {
   flex: 1;
-  height: 56px;
-  font-size: var(--font-size-2xl);
+  height: 44px;
+  font-size: var(--font-size-xl);
   color: var(--suit-black);
   background: var(--felt-600);
   border: 1px solid var(--border-subtle);
@@ -471,7 +506,7 @@ body {
 
 .picker-btn {
   flex: 1;
-  height: 44px;
+  height: 38px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   border-radius: var(--radius-md);
@@ -884,68 +919,74 @@ body {
   align-items: center;
 }
 
+/* ——— Карта как настоящая игральная карта ——— */
 .card-display {
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  width: 40px;
-  height: 56px;
-  padding: 3px 4px;
+  width: 38px;
+  height: 54px;
+  padding: 0;
   background: var(--card-face);
   border-radius: var(--radius-card);
   border: 1px solid var(--card-face-border);
   box-shadow: var(--shadow-card-rest);
   vertical-align: middle;
   margin: 0 2px;
+  overflow: hidden;
 }
 
-.card-text {
+.card-face {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 2px 3px;
+  box-sizing: border-box;
+}
+
+/* Углы: ранг + масть, верхний-левый и нижний-правый (как на реальной карте) */
+.card-corner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 14px;
-  font-weight: var(--font-weight-bold);
   line-height: 1;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--felt-900);   /* тёмный ранг на белом лице карты */
+  z-index: 1;
 }
 
-.card-char {
-  display: none;
+.card-corner--tl { align-self: flex-start; }
+.card-corner--br {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+
+.card-corner .suit { font-size: 9px; }
+
+/* Крупная масть по центру карты */
+.card-pip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  line-height: 1;
 }
 
 .suit-h, .suit-d { color: var(--suit-red); }
 .suit-s, .suit-c { color: var(--suit-black); }
 
 .hand-cards .card-display {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
+  width: 44px;
+  height: 62px;
 }
 
-.hand-cards .card-char {
-  font-size: 1.4rem;
-  line-height: 1;
-  font-family: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
-}
-
-.hand-cards .card-text {
-  font-size: 0.72rem;
-  font-weight: 400;
-}
-
-.hand-cards .suit {
-  font-weight: 400;
-}
-
-.hand-cards .suit-s,
-.hand-cards .suit-c {
-  color: var(--suit-black);
-}
-
-.hand-cards .suit-h,
-.hand-cards .suit-d {
-  color: var(--suit-red);
-}
+.hand-cards .card-corner { font-size: 11px; }
+.hand-cards .card-corner .suit { font-size: 10px; }
+.hand-cards .card-pip { font-size: 26px; }
 
 /* Ауты: список карт и значение небольшим размером */
 .outs-item {
@@ -969,21 +1010,13 @@ body {
 }
 
 .outs-cards .card-display {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  font-size: 0.75rem;
+  width: 28px;
+  height: 40px;
 }
 
-.outs-cards .card-char {
-  font-size: 1rem;
-  line-height: 1;
-  font-family: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
-}
-
-.outs-cards .card-text {
-  font-size: 0.7rem;
-}
+.outs-cards .card-corner { font-size: 8px; }
+.outs-cards .card-corner .suit { font-size: 7px; }
+.outs-cards .card-pip { font-size: 16px; }
 
 .outs-cards .suit-s,
 .outs-cards .suit-c {
@@ -1066,8 +1099,8 @@ body {
 }
 
 .player-chip {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
@@ -1112,8 +1145,8 @@ body {
 
 .position-chip {
   padding: 0 var(--space-3);
-  height: 44px;
-  min-width: 56px;
+  height: 38px;
+  min-width: 48px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
@@ -1176,7 +1209,7 @@ body {
 
 .btn-calculate {
   width: 100%;
-  height: 56px;
+  height: 46px;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--felt-900);
@@ -1190,6 +1223,32 @@ body {
 
 .btn-calculate:hover { opacity: 0.9; }
 .btn-calculate:active { transform: scale(0.98); }
+
+/* Loading-состояние во время расчёта эквити */
+.btn-calculate.is-calculating {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.btn-calculate.is-calculating::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid var(--felt-900);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-calc-spin 0.6s linear infinite;
+}
+
+@keyframes btn-calc-spin {
+  to { transform: rotate(360deg); }
+}
 
 .results-hero {
   background: var(--felt-700);
@@ -1404,6 +1463,17 @@ body {
     height: 2rem;
   }
 
+  /* Chips: enlarge to meet 44px touch target minimum */
+  .position-chip {
+    height: 2.75rem;        /* 44px */
+    min-width: 2.75rem;
+  }
+
+  .player-chip {
+    width: 2.75rem;         /* 44px */
+    height: 2.75rem;
+  }
+
   .board-stage-name {
     font-size: 0.65rem;
   }
@@ -1476,8 +1546,8 @@ body {
 }
 
 .btn-reset {
-  width: 56px;
-  height: 56px;
+  width: 46px;
+  height: 46px;
   font-size: var(--font-size-xl);
   color: var(--text-muted);
   background: var(--felt-700);

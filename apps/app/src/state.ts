@@ -8,6 +8,8 @@ export interface AppState {
   numPlayers: number;
   potSize: number;
   toCall: number;
+  /** Скрыта ли рука (режим приватности — карты руки и результат не видны). */
+  handHidden: boolean;
 }
 
 const STORAGE_KEY = 'poker-assistant:state:v1';
@@ -48,6 +50,7 @@ function isValidState(obj: unknown): obj is AppState {
   if (typeof s.numPlayers !== 'number') return false;
   if (typeof s.potSize !== 'number') return false;
   if (typeof s.toCall !== 'number') return false;
+  if (typeof s.handHidden !== 'boolean') return false;
   return true;
 }
 
@@ -60,6 +63,7 @@ export function getDefaultState(): AppState {
     numPlayers: 6,
     potSize: 0,
     toCall: 0,
+    handHidden: false,
   };
 }
 

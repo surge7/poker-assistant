@@ -128,15 +128,15 @@
   --shadow-popover:      0 8px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-felt-inset:   inset 0 1px 3px rgba(0, 0, 0, 0.3);
 
-  /* --- Spacing scale (4px base) --- */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
+  /* --- Spacing scale (compact, 3px base) --- */
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 9px;
+  --space-4: 12px;
+  --space-5: 15px;
+  --space-6: 18px;
+  --space-7: 24px;
+  --space-8: 30px;
 
   /* --- Border radius --- */
   --radius-sm:   6px;
@@ -148,13 +148,13 @@
   /* --- Typography --- */
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
-  --font-size-xs:   12px;
-  --font-size-sm:   13px;
-  --font-size-base: 15px;
-  --font-size-lg:   17px;
-  --font-size-xl:   20px;
-  --font-size-2xl:  24px;
-  --font-size-3xl:  32px;
+  --font-size-xs:   11px;
+  --font-size-sm:   12px;
+  --font-size-base: 14px;
+  --font-size-lg:   16px;
+  --font-size-xl:   18px;
+  --font-size-2xl:  21px;
+  --font-size-3xl:  28px;
 
   --font-weight-normal:   400;
   --font-weight-medium:   500;
@@ -228,14 +228,14 @@
   --shadow-felt-inset:   inset 0 1px 3px rgba(0, 0, 0, 0.08);
 
   /* Spacing, radius, typography, motion, z-index: same as dark */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 9px;
+  --space-4: 12px;
+  --space-5: 15px;
+  --space-6: 18px;
+  --space-7: 24px;
+  --space-8: 30px;
 
   --radius-sm:   6px;
   --radius-md:   12px;
@@ -245,13 +245,13 @@
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
-  --font-size-xs:   12px;
-  --font-size-sm:   13px;
-  --font-size-base: 15px;
-  --font-size-lg:   17px;
-  --font-size-xl:   20px;
-  --font-size-2xl:  24px;
-  --font-size-3xl:  32px;
+  --font-size-xs:   11px;
+  --font-size-sm:   12px;
+  --font-size-base: 14px;
+  --font-size-lg:   16px;
+  --font-size-xl:   18px;
+  --font-size-2xl:  21px;
+  --font-size-3xl:  28px;
 
   --font-weight-normal:   400;
   --font-weight-medium:   500;
