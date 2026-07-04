@@ -2,13 +2,9 @@ import { equityPercent } from './equity';
 import { evaluatePlayerHand } from './hand-eval';
 import { totalOuts } from './outs';
 import { compareToNuts } from './nuts';
+import { isLatePosition } from './positions';
 import type { TableContext, AdviceResult, Card } from './types';
 import { HandRank } from './types';
-
-/** Поздняя позиция (BTN, CO) — можно играть шире. Ранняя (UTG, MP, SB, BB) — уже. */
-function isLatePosition(positionIndex: number, numPlayers: number): boolean {
-  return positionIndex === 0 || positionIndex === numPlayers - 1;
-}
 
 const RANK_ORDER: Record<string, number> = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, 'T': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
 

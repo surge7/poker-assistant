@@ -54,7 +54,7 @@ async function processFile(sharp, inputPath, outputPath) {
       cropOptions = { width: cropW, height, left, top: 0 };
     } else {
       const cropH = Math.round(width / TARGET_ASPECT);
-      const top = Math.round((height - cropH) / 2);
+      const top = 0; // контент сверху — не обрезаем шапку и карты
       cropOptions = { width, height: cropH, left: 0, top };
     }
   }

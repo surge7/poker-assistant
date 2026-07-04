@@ -16,6 +16,15 @@ export type {
   PositionIndex,
 } from './types';
 export { RANKS, SUITS, HandRank, POSITION_NAMES } from './types';
+export {
+  clampNumPlayers,
+  clampPositionIndex,
+  getPositionName,
+  getPositionHelpHtml,
+  getTablePositions,
+  isLatePosition,
+} from './positions';
+export type { TablePosition } from './positions';
 
 // Колода
 export {

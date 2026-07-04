@@ -5,10 +5,16 @@ import {
   equityPercentRange,
   compareToNuts,
   getAdvice,
-  POSITION_NAMES,
+  clampNumPlayers,
+  clampPositionIndex,
+  getPositionHelpHtml,
+  getPositionName,
+  getTablePositions,
   type Card,
+  type TablePosition,
 } from '@poker/core';
-import { impactLight, selectionChanged, notificationWarning } from './haptics';
+import { impactLight, impactMedium, selectionChanged, notificationWarning, notificationSuccess } from './haptics';
+import { cardToHtml, setPreviewCardImage, setTriggerCardImage } from './cards';
 import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -29,16 +35,6 @@ const RANK_LABELS: Record<string, string> = {
   A: 'A (туз)',
 };
 
-/** Карта как HTML: настоящая игральная карта — ранг+масть в углах, крупная масть по центру */
-function cardToHtml(card: Card): string {
-  const rank = card[0] === 'T' ? '10' : card[0];
-  const suit = card[1];
-  const symbol = SUIT_SYMBOLS[suit] ?? suit;
-  const suitClass = `suit suit-${suit}`;
-  const corner = `${rank}<span class="${suitClass}">${symbol}</span>`;
-  return `<span class="card-display" title="${rank}${symbol}"><span class="card-face"><span class="card-corner card-corner--tl">${corner}</span><span class="card-pip suit-${suit}" aria-hidden="true">${symbol}</span><span class="card-corner card-corner--br">${corner}</span></span></span>`;
-}
-
 function getPhase(boardLength: number): 'preflop' | 'flop' | 'turn' | 'river' {
   if (boardLength === 0) return 'preflop';
   if (boardLength === 3) return 'flop';
@@ -50,14 +46,6 @@ function renderCardOption(value: string, label: string): string {
   return `<option value="${value}">${label}</option>`;
 }
 
-/** Карта как текст для триггера: ранг + символ масти */
-function cardToTriggerText(card: Card | null): string {
-  if (!card) return '—';
-  const rank = card[0] === 'T' ? '10' : card[0];
-  const suit = SUIT_SYMBOLS[card[1]] ?? card[1];
-  return `${rank}${suit}`;
-}
-
 /** Обновить отображение триггера пикера по значениям в select */
 function updatePickerDisplay(idPrefix: string, slotIndex: number): void {
   const rankEl = document.getElementById(`${idPrefix}-rank-${slotIndex}`) as HTMLSelectElement | null;
@@ -67,17 +55,7 @@ function updatePickerDisplay(idPrefix: string, slotIndex: number): void {
   const r = rankEl.value;
   const s = suitEl.value;
   const card = r && s ? ((r + s) as Card) : null;
-  trigger.textContent = cardToTriggerText(card);
-  trigger.classList.toggle('card-picker-trigger--empty', !card);
-  const wrap = suitEl.closest('.card-picker-wrap');
-  if (idPrefix === 'board' && wrap) {
-    wrap.classList.remove('board-card--red-suit', 'board-card--black-suit');
-    if (suitEl.value === 'h' || suitEl.value === 'd') wrap.classList.add('board-card--red-suit');
-    else if (suitEl.value === 's' || suitEl.value === 'c') wrap.classList.add('board-card--black-suit');
-  }
-  if (idPrefix === 'hole' && wrap) {
-    wrap.classList.toggle('card-picker-wrap--red-suit', suitEl.value === 'h' || suitEl.value === 'd');
-  }
+  setTriggerCardImage(trigger, card);
 }
 
 /** Карты, выбранные во всех слотах кроме указанного (для отключения в сетке) */
@@ -185,10 +163,8 @@ function buildCardPickerSlot(
 
   function updatePreview() {
     if (pendingRank && pendingSuit) {
-      const rankLabel = pendingRank === 'T' ? '10' : pendingRank;
-      const suitSymbol = SUIT_SYMBOLS[pendingSuit] ?? pendingSuit;
-      preview.textContent = `${rankLabel}${suitSymbol}`;
-      preview.className = `picker-preview${pendingSuit === 'h' || pendingSuit === 'd' ? ' picker-preview--red' : ''}`;
+      const card = (pendingRank + pendingSuit) as Card;
+      setPreviewCardImage(preview, card);
       doneBtn.disabled = false;
     } else if (pendingRank) {
       preview.textContent = pendingRank === 'T' ? '10' : pendingRank;
@@ -226,7 +202,6 @@ function buildCardPickerSlot(
   wrap.append(rank, suit, trigger, popover);
 
   function openPopover(): void {
-    const taken = getSelectedCardsExcept(idPrefix === 'hole' ? slotIndex : slotIndex + 2);
     pendingRank = rank.value || '';
     pendingSuit = suit.value || '';
     setActiveRank(pendingRank);
@@ -238,14 +213,6 @@ function buildCardPickerSlot(
     });
     suitRow.querySelectorAll<HTMLButtonElement>('.picker-suit-btn').forEach(btn => {
       btn.disabled = false;
-    });
-    RANK_VALUES.forEach((r) => {
-      SUIT_DATA.forEach(({ suit: s }) => {
-        const card = (r + s) as Card;
-        if (taken.has(card)) {
-          // Disable combinations that are taken
-        }
-      });
     });
 
     const rect = trigger.getBoundingClientRect();
@@ -427,8 +394,7 @@ export function initApp(): void {
   app.innerHTML = `
     <header class="header">
       <div class="header-brand">
-        <h1 class="header-logo-wrap"><img src="./logo-pirate.png" alt="Покерный тренажер СР" class="header-logo"></h1>
-        <span class="header-title">Покерный тренажёр</span>
+        <img src="./logo-pirate.png" alt="Покерный тренажёр" class="header-logo" id="header-logo">
       </div>
       <div class="header-controls">
         <button type="button" class="hand-toggle btn-ripple" id="hand-toggle" aria-label="Скрыть/показать руку" title="Скрыть/показать руку">
@@ -461,17 +427,6 @@ export function initApp(): void {
               <div class="board-stage board-stage-turn"><span class="board-stage-name">Терн</span></div>
               <div class="board-stage board-stage-river"><span class="board-stage-name">Ривер</span></div>
             </div>
-            <div class="board-brackets">
-              <div class="board-stage board-stage-flop">
-                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              </div>
-              <div class="board-stage board-stage-turn">
-                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              </div>
-              <div class="board-stage board-stage-river">
-                <svg class="board-bracket" viewBox="0 0 100 16" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 14 Q 50 0 100 14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              </div>
-            </div>
             <div id="board-cards" class="board-cards-row"></div>
           </div>
         </div>
@@ -483,13 +438,9 @@ export function initApp(): void {
             <span>Позиция</span>
             <button type="button" class="position-help-trigger btn-ripple" aria-label="Подсказка по позициям">?</button>
           </label>
-          <div class="position-chips-row" role="group" aria-label="Выбор позиции">
-            ${[0, 1, 2, 3, 4, 5].map((i) => `<button type="button" class="position-chip${i === 0 ? ' position-chip--active' : ''}" data-position="${i}">${POSITION_NAMES[i] ?? i}</button>`).join('')}
-          </div>
+          <div class="position-chips-row" id="position-chips-row" role="group" aria-label="Выбор позиции"></div>
           <input type="hidden" id="position" value="0">
-          <div class="position-help-popover" id="position-help-popover" role="tooltip" hidden>
-            <p><strong>BTN</strong> — баттон/дилер, ходит последним (выгодная позиция). <strong>SB</strong> — малый блайнд. <strong>BB</strong> — большой блайнд. <strong>UTG</strong> — первый после блайндов (сложно). <strong>MP</strong> — средняя позиция. <strong>CO</strong> — катофф (удобно, почти как баттон).</p>
-          </div>
+          <div class="position-help-popover" id="position-help-popover" role="tooltip" hidden></div>
         </div>
         <label>
           <span>Игроков за столом</span>
@@ -498,20 +449,24 @@ export function initApp(): void {
           </div>
           <input type="hidden" id="num-players" value="6">
         </label>
-        <label>
-          <span>Банк</span>
-          <div class="input-with-step" data-step="5" data-min="0">
-            <input type="number" id="pot-size" min="0" value="0" />
-            <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
-            <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
-          </div>
-        </label>
-        <label>
-          <span>Сумма колла</span>
-          <div class="input-with-step" data-step="5" data-min="0">
-            <input type="number" id="to-call" min="0" value="0" />
-            <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
-            <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
+        <div class="pot-call-block">
+          <div class="pot-call-row">
+            <label class="pot-call-field">
+              <span>Банк</span>
+              <div class="input-with-step" data-step="5" data-min="0">
+                <input type="number" id="pot-size" min="0" value="0" />
+                <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
+                <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
+              </div>
+            </label>
+            <label class="pot-call-field">
+              <span>Сумма колла</span>
+              <div class="input-with-step" data-step="5" data-min="0">
+                <input type="number" id="to-call" min="0" value="0" />
+                <button type="button" class="step-btn step-down" aria-label="−5">−5</button>
+                <button type="button" class="step-btn step-up" aria-label="+5">+5</button>
+              </div>
+            </label>
           </div>
           <div class="presets-row" id="call-presets">
             <button type="button" class="preset-chip" data-preset="third">⅓ банка</button>
@@ -519,7 +474,7 @@ export function initApp(): void {
             <button type="button" class="preset-chip" data-preset="pot">Банк</button>
             <button type="button" class="preset-chip" data-preset="zero">0</button>
           </div>
-        </label>
+        </div>
       </section>
 
       <section class="section results" id="results">
@@ -537,6 +492,27 @@ export function initApp(): void {
   buildCardSelects(holeContainer, 2, 'hole', ['Первая карта', 'Вторая карта']);
   buildBoardCardSelects(boardContainer);
   attachDuplicateCheck();
+
+  const positionInput = document.getElementById('position') as HTMLInputElement;
+  const positionChipsRow = document.getElementById('position-chips-row')!;
+  const positionHelpPopover = document.getElementById('position-help-popover')!;
+
+  function updatePositionUI(numPlayers: number, selectedIndex?: number): void {
+    const n = clampNumPlayers(numPlayers);
+    const current = selectedIndex ?? (parseInt(positionInput.value, 10) || 0);
+    const clamped = clampPositionIndex(current, n);
+    positionInput.value = String(clamped);
+
+    const positions = getTablePositions(n);
+    positionChipsRow.innerHTML = positions
+      .map(
+        (p: TablePosition) =>
+          `<button type="button" class="position-chip${p.index === clamped ? ' position-chip--active' : ''}" data-position="${p.index}">${p.name}</button>`
+      )
+      .join('');
+
+    positionHelpPopover.innerHTML = getPositionHelpHtml(n);
+  }
 
   // --- Persistence: load and restore state ---
   function applyState(state: AppState) {
@@ -564,14 +540,11 @@ export function initApp(): void {
         updatePickerDisplay('board', i);
       }
     }
-    (document.getElementById('position') as HTMLInputElement).value = String(state.position);
-    document.querySelectorAll('.position-chip').forEach(c => {
-      c.classList.toggle('position-chip--active', c.getAttribute('data-position') === String(state.position));
-    });
     (document.getElementById('num-players') as HTMLInputElement).value = String(state.numPlayers);
     document.querySelectorAll('.player-chip').forEach(c => {
       c.classList.toggle('player-chip--active', c.getAttribute('data-players') === String(state.numPlayers));
     });
+    updatePositionUI(state.numPlayers, state.position);
     (document.getElementById('pot-size') as HTMLInputElement).value = String(state.potSize);
     (document.getElementById('to-call') as HTMLInputElement).value = String(state.toCall);
     applyHandHidden(state.handHidden);
@@ -592,8 +565,8 @@ export function initApp(): void {
   if (savedState) {
     applyState(savedState);
   } else {
-    // Дефолт: рука видима
     applyHandHidden(false);
+    updatePositionUI(6, 0);
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -629,24 +602,32 @@ export function initApp(): void {
 
   for (let i = 0; i < 2; i++) {
     document.getElementById(`hole-rank-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`hole-rank-${i}`)?.addEventListener('change', scheduleCalc);
     document.getElementById(`hole-suit-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`hole-suit-${i}`)?.addEventListener('change', scheduleCalc);
   }
   for (let i = 0; i < 5; i++) {
     document.getElementById(`board-rank-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`board-rank-${i}`)?.addEventListener('change', scheduleCalc);
     document.getElementById(`board-suit-${i}`)?.addEventListener('change', debouncedSave);
+    document.getElementById(`board-suit-${i}`)?.addEventListener('change', scheduleCalc);
   }
   document.getElementById('pot-size')?.addEventListener('input', debouncedSave);
+  document.getElementById('pot-size')?.addEventListener('input', scheduleCalc);
   document.getElementById('to-call')?.addEventListener('input', debouncedSave);
+  document.getElementById('to-call')?.addEventListener('input', scheduleCalc);
 
   // Player chips
   document.querySelectorAll<HTMLButtonElement>('.player-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      const n = chip.dataset.players ?? '6';
-      (document.getElementById('num-players') as HTMLInputElement).value = n;
+      const n = parseInt(chip.dataset.players ?? '6', 10) || 6;
+      (document.getElementById('num-players') as HTMLInputElement).value = String(n);
       document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('player-chip--active'));
       chip.classList.add('player-chip--active');
+      updatePositionUI(n);
       selectionChanged();
       debouncedSave();
+      scheduleCalc();
     });
   });
 
@@ -670,6 +651,8 @@ export function initApp(): void {
         case 'pot': input.value = String(potVal); break;
         case 'zero': input.value = '0'; break;
       }
+      document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('preset-chip--active'));
+      chip.classList.add('preset-chip--active');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
@@ -677,20 +660,24 @@ export function initApp(): void {
   document.getElementById('pot-size')?.addEventListener('input', updatePresetChips);
   updatePresetChips();
 
-  // Position chips
-  document.querySelectorAll<HTMLButtonElement>('.position-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const pos = chip.dataset.position ?? '0';
-      (document.getElementById('position') as HTMLInputElement).value = pos;
-      document.querySelectorAll('.position-chip').forEach(c => c.classList.remove('position-chip--active'));
-      chip.classList.add('position-chip--active');
-      selectionChanged();
-      debouncedSave();
-    });
+  // Сброс активного пресета при ручном вводе суммы колла
+  document.getElementById('to-call')?.addEventListener('input', () => {
+    document.querySelectorAll('.preset-chip--active').forEach(c => c.classList.remove('preset-chip--active'));
+  });
+
+  positionChipsRow.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('.position-chip');
+    if (!chip) return;
+    const pos = chip.dataset.position ?? '0';
+    positionInput.value = pos;
+    positionChipsRow.querySelectorAll('.position-chip').forEach(c => c.classList.remove('position-chip--active'));
+    chip.classList.add('position-chip--active');
+    selectionChanged();
+    debouncedSave();
+    scheduleCalc();
   });
 
   const positionHelpTrigger = document.querySelector('.position-help-trigger') as HTMLButtonElement;
-  const positionHelpPopover = document.getElementById('position-help-popover')!;
   if (positionHelpTrigger && positionHelpPopover) {
     positionHelpTrigger.addEventListener('click', (e) => {
       e.preventDefault();
@@ -730,6 +717,10 @@ export function initApp(): void {
     if (themeIconSun && themeIconMoon) {
       themeIconSun.hidden = theme === 'light';
       themeIconMoon.hidden = theme === 'dark';
+    }
+    const headerLogo = document.getElementById('header-logo') as HTMLImageElement | null;
+    if (headerLogo) {
+      headerLogo.src = theme === 'light' ? './logo-light.png' : './logo-pirate.png';
     }
   }
   if (themeToggle && themeIconSun && themeIconMoon) {
@@ -786,8 +777,8 @@ export function initApp(): void {
   function updateResults(triggeredByUser = false): void {
     const holeCards = readCardSelects(holeContainer, 'hole');
     const boardCards = readCardSelects(boardContainer, 'board');
-    const positionIndex = Math.min(5, Math.max(0, parseInt((document.getElementById('position') as HTMLSelectElement).value, 10) || 0));
-    const numPlayers = Math.min(10, Math.max(2, parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6));
+    const numPlayers = clampNumPlayers(parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6);
+    const positionIndex = clampPositionIndex(parseInt(positionInput.value, 10) || 0, numPlayers);
     const potSize = parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0;
     const toCall = parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0;
 
@@ -849,6 +840,14 @@ export function initApp(): void {
       equityPercent: eqRange.percent,
     });
 
+    // Тактильная отдача на вердикте — только при ручном расчёте (не на auto-calc)
+    if (triggeredByUser) {
+      if (advice.action === 'raise' || advice.action === 'all-in') notificationSuccess();
+      else if (advice.action === 'fold') notificationWarning();
+      else if (advice.action === 'call') impactMedium();
+      else impactLight();
+    }
+
     const handLabel =
       board.length < 3
         ? board.length === 0
@@ -861,16 +860,27 @@ export function initApp(): void {
       : 'results-action results-action--positive';
 
     const equityClass = eqRange.percent < 35 ? 'results-equity results-equity--low' : 'results-equity';
+    const confidencePct = Math.round(advice.confidence * 100);
 
     let html = `
       <div class="results-hero animate-fade-in-up">
-        <div class="${actionClass}">${advice.action.toUpperCase()}</div>
-        <div class="${equityClass}">${eqRange.low}%–${eqRange.high}%</div>
+        <div class="results-hero-top">
+          <div class="${actionClass}">${advice.action.toUpperCase()}</div>
+          <div class="results-confidence">уверенность ${confidencePct}%</div>
+        </div>
+        ${board.length >= 3 ? `
+          <div class="results-equity-row">
+            <span class="results-equity-label">Эквити</span>
+            <span class="${equityClass}">${eqRange.low}%–${eqRange.high}%</span>
+          </div>
+        ` : ''}
         <p class="results-reason">${advice.reason}</p>
         <div class="results-context">
           <span>${phaseLabel}</span>
           <span>·</span>
           <span>${numPlayers} игроков</span>
+          <span>·</span>
+          <span>${getPositionName(positionIndex, numPlayers)}</span>
           ${potSize > 0 ? `<span>·</span><span>Банк ${potSize}</span>` : ''}
           ${toCall > 0 ? `<span>·</span><span>Колл ${toCall}</span>` : ''}
         </div>
@@ -880,7 +890,7 @@ export function initApp(): void {
     html += `
       <div class="results-hand">
         <span class="results-hand-name">${handLabel}</span>
-        <span class="results-hand-cards">${strength.cards.map(cardToHtml).join('')}</span>
+        <span class="results-hand-cards">${strength.cards.map((c) => cardToHtml(c)).join('')}</span>
       </div>
     `;
 
@@ -922,6 +932,13 @@ export function initApp(): void {
     }
 
     resultsContent.innerHTML = html;
+  }
+
+  /** Авто-расчёт: debounce 600мс, без тактильной отдачи (чтобы не вибрировать при каждом вводе). */
+  let calcTimer: ReturnType<typeof setTimeout> | undefined;
+  function scheduleCalc(): void {
+    clearTimeout(calcTimer);
+    calcTimer = setTimeout(() => updateResults(false), 600);
   }
 
   const btnCalculate = document.getElementById('btn-calculate');

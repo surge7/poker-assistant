@@ -29,12 +29,20 @@ coverage/
 # Android build (android/ has its own .gitignore; root-level backup)
 *.apk
 *.aab
+dist-portable/
+apps/app/portable/
+apps/app/poker-assistant-portable.zip
+apps/app/poker-assistant.html
 
 # Agent/tooling artifacts (task trackers, evidence, temp screenshots)
 .omo/
 .sisyphus/
 .playwright-mcp/
 .venv-excel/
+.specstory/
+.cursorindexingignore
 
 # Temporary screenshots
 /tmp/*.png
+/review-*.png
+test-results/

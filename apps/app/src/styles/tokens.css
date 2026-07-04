@@ -109,7 +109,9 @@
 
   /* --- Colors: Suits --- */
   --suit-red:   #d44040;   /* hearts & diamonds */
-  --suit-black: #9fbfa8;   /* spades & clubs */
+  --suit-black: #1a1a1a;   /* spades & clubs on card face */
+  --suit-on-felt: #e6f0e8; /* spades & clubs on dark felt UI */
+  --ink-on-gold:  #0a0e0b; /* text on gold chips/buttons */
 
   /* --- Colors: Card face --- */
   --card-face:        #f5f0e8;   /* card background (warm white) */
@@ -142,7 +144,7 @@
   --radius-sm:   6px;
   --radius-md:   12px;
   --radius-lg:   16px;
-  --radius-card: 10px;
+  --radius-card: 4px;
   --radius-pill: 999px;
 
   /* --- Typography --- */
@@ -202,13 +204,15 @@
   --state-danger:   #b83030;
 
   /* --- Colors: Text --- */
-  --text-primary:   #1a2e1e;
-  --text-secondary: #3a5e42;
-  --text-muted:     #5a7a62;
+  --text-primary:   #15281b;
+  --text-secondary: #2e5538;
+  --text-muted:     #3d6450;
 
   /* --- Colors: Suits --- */
   --suit-red:   #b03030;
-  --suit-black: #1a3a2a;
+  --suit-black: #1a1a1a;
+  --suit-on-felt: #15281b;
+  --ink-on-gold:  #1a1208;
 
   /* --- Colors: Card face --- */
   --card-face:        #ffffff;
@@ -240,7 +244,7 @@
   --radius-sm:   6px;
   --radius-md:   12px;
   --radius-lg:   16px;
-  --radius-card: 10px;
+  --radius-card: 4px;
   --radius-pill: 999px;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
