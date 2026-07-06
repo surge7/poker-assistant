@@ -25,4 +25,30 @@ describe('countOuts', () => {
     expect(flushOut).toBeDefined();
     expect(flushOut!.outs).toBe(9); // 13 − 4 = 9 червей осталось в колоде
   });
+
+  it('считает стрит-ауты для wheel-дро (A-2-3-4, нужна 5)', () => {
+    // Рука Ah 2d + борд 3c 4s 9h: держим A-2-3-4, пятёрка даёт wheel-стрит A-2-3-4-5.
+    // Ожидаем 4 аута (4 пятёрки в колоде).
+    const holeCards: Card[] = ['Ah', '2d'];
+    const board: Card[] = ['3c', '4s', '9h'];
+
+    const results = countOuts(holeCards, board);
+
+    const straightOut = results.find((r) => r.description.startsWith('Стрит-дро'));
+    expect(straightOut).toBeDefined();
+    expect(straightOut!.outs).toBe(4); // 4 пятёрки
+  });
+
+  it('считает стрит-ауты для wheel-дро с тузом и тройкой-четвёркой (без двойки)', () => {
+    // Рука Ah 3d + борд 4s 5c 9h: держим A-3-4-5, двойка даёт wheel-стрит A-2-3-4-5.
+    // Шестёрка стрит не даёт (нет 7 для 3-4-5-6-7), поэтому только 4 аута (двойки).
+    const holeCards: Card[] = ['Ah', '3d'];
+    const board: Card[] = ['4s', '5c', '9h'];
+
+    const results = countOuts(holeCards, board);
+
+    const straightOut = results.find((r) => r.description.startsWith('Стрит-дро'));
+    expect(straightOut).toBeDefined();
+    expect(straightOut!.outs).toBe(4); // только 4 двойки для wheel
+  });
 });

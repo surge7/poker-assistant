@@ -114,15 +114,29 @@ function getStraightOutCards(holeCards: Card[], board: Card[], remaining: Card[]
     '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, 'T': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12,
   };
   const values = [...holeCards, ...board].map((c) => rankOrder[c[0]] ?? -1);
+  const has = (v: number) => values.includes(v);
   const needed = new Set<number>();
+
   for (let r = 0; r <= 12; r++) {
-    const test = [...values, r];
-    const sorted = [...new Set(test)].sort((a, b) => b - a);
-    for (let i = 0; i <= sorted.length - 5; i++) {
-      const run = sorted.slice(i, i + 5);
-      if (run.length === 5 && run[0] - run[4] === 4) {
+    // Временно считаем что ранг r у нас в руке.
+    const testHas = (v: number) => v === r || has(v);
+
+    // Обычные стриты: 5 идущих подряд рангов (от r_top вниз).
+    // r_top может быть от 4 (5-high: 4-3-2-1-0) до 12 (Broadway: 12-11-10-9-8).
+    for (let top = 12; top >= 4; top--) {
+      if (testHas(top) && testHas(top - 1) && testHas(top - 2) && testHas(top - 3) && testHas(top - 4)) {
         needed.add(r);
         break;
+      }
+    }
+
+    // Wheel: A-2-3-4-5 (12, 0, 1, 2, 3). Обрабатываем отдельно —
+    // не покрывается обычным циклом выше (ранги не идущие подряд из-за туза).
+    // Проверяем только если ранг r входит в wheel-окно.
+    if ([12, 0, 1, 2, 3].includes(r)) {
+      const wheelRanks = [12, 0, 1, 2, 3];
+      if (wheelRanks.every(testHas)) {
+        needed.add(r);
       }
     }
   }
