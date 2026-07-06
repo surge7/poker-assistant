@@ -20,7 +20,8 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   const dead = [...holeCards, ...board];
   const remaining = removeKnown(deck, dead);
 
-  // Флеш-дро: одна масть в руке, две на борде
+  // Флеш-дро: нужно ровно 4 одномастных карты (добираем 5-ю за одну улицу = классический flush draw, 9 аутов).
+  // 2 или 3 одномастных на флопе — это backdoor-flush (нужно 2 карты за 2 улицы, ~4%), он НЕ считается аутом.
   const flushCards = getFlushOutCards(holeCards, board, remaining);
   if (flushCards.length > 0) {
     const oneCard = board.length === 5 ? flushCards.length / remaining.length : IMPROVE_RULE.twoCards(flushCards.length);
@@ -71,19 +72,22 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   return results;
 }
 
-/** Упрощённо: один результат «всего аутов» и шанс улучшения. На флопе — на две улицы (Rule of 4); на терне — на одну (Rule of 2). */
+/**
+ * Упрощённо: один результат «всего аутов» и шанс улучшения. На флопе — на две улицы (Rule of 4); на терне — на одну (Rule of 2).
+ * Ауты объединяются по множеству карт: если одна карта даёт и флеш, и стрит (например, Th в монстр-дро),
+ * она считается один раз, а не дважды — иначе double-counting завышает improveChance.
+ */
 export function totalOuts(holeCards: Card[], board: Card[]): { total: number; improveChance: number } {
   const list = countOuts(holeCards, board);
-  const total = Math.min(
-    list.reduce((sum, r) => sum + r.outs, 0),
-    46
-  );
+  const outCardSet = new Set<Card>();
+  for (const r of list) for (const c of r.outCards ?? []) outCardSet.add(c);
+  const total = Math.min(outCardSet.size, 46);
   const remaining = 52 - holeCards.length - board.length;
   const improveChance =
     remaining > 0
       ? board.length === 3
         ? IMPROVE_RULE.twoCards(total) // флоп: две карты впереди (Rule of 4)
-        : total / remaining // терн или меньше: одна карта впереди (Rule of 2)
+        : total / remaining // терн или меньше: одна карта впереде (Rule of 2)
       : 0;
   return { total, improveChance };
 }
@@ -96,7 +100,9 @@ function getFlushOutCards(holeCards: Card[], board: Card[], remaining: Card[]): 
   for (const [s, count] of Object.entries(suitCount)) {
     const inHole = holeCards.some((c) => c[1] === s);
     const onBoard = board.some((c) => c[1] === s);
-    if (count >= 2 && inHole && onBoard) {
+    // Классический flush draw: ровно 4 одномастных (1 в руке + 3 на борде, либо 2+2) — добираем 5-ю за улицу.
+    // При count <= 3 это backdoor-flush (шанс ~4%), он не считается аутом на одной улице.
+    if (count === 4 && inHole && onBoard) {
       return remaining.filter((c) => c[1] === s);
     }
   }

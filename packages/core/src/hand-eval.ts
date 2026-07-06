@@ -198,26 +198,36 @@ function findStraightFlush(cards: Card[]): HandStrength | null {
 
 function findStraight(cards: Card[]): HandStrength | null {
   const values = [...new Set(cards.map(rankValue))].sort((a, b) => b - a);
+  const has = (v: number) => values.includes(v);
+
+  // Wheel: A-2-3-4-5 (A=12, 5=3, 4=2, 3=1, 2=0). high = 3 (пятёрка).
+  // Обрабатываем отдельно, иначе цикл ниже ломается на переходе A→5.
+  if (has(12) && has(0) && has(1) && has(2) && has(3)) {
+    const wheelRanks = [3, 2, 1, 0, 12]; // 5-4-3-2-A для отображения
+    const straightCards = wheelRanks
+      .map((r) => cards.find((c) => rankValue(c) === r)!)
+      .filter(Boolean);
+    return {
+      rank: HandRank.Straight,
+      name: 'Стрит',
+      cards: straightCards.slice(0, 5),
+      value: 3, // wheel — это 5-high стрит
+    };
+  }
+
+  // Обычные стриты: ищем 5 идущих подряд рангов, начиная с высокой карты.
   for (const v of values) {
-    const run = [v];
-    for (let k = 1; k < 5; k++) {
-      const next = v - k;
-      if (next < 0 && v === 12) {
-        if (values.includes(3)) run.push(3);
-      } else if (values.includes(next)) {
-        run.push(next);
-      } else break;
-    }
-    if (run.length === 5) {
+    if (v < 4) break; // ниже 5-high стрита быть не может (5=3, нужна цепочка 3-2-1-0 + A — это wheel выше)
+    const run = [v, v - 1, v - 2, v - 3, v - 4];
+    if (run.every(has)) {
       const straightCards = run
         .map((r) => cards.find((c) => rankValue(c) === r)!)
         .filter(Boolean);
-      const high = run[0] === 12 && run.includes(3) ? 3 : run[0];
       return {
         rank: HandRank.Straight,
         name: 'Стрит',
         cards: straightCards.slice(0, 5),
-        value: high,
+        value: v, // старшая карта стрита (6-high → v=4, ... Broadway → v=12)
       };
     }
   }
