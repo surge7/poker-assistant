@@ -838,6 +838,8 @@ export function initApp(): void {
       numPlayers,
       positionIndex,
       equityPercent: eqRange.percent,
+      equityLow: eqRange.low,
+      equityHigh: eqRange.high,
     });
 
     // Тактильная отдача на вердикте — только при ручном расчёте (не на auto-calc)

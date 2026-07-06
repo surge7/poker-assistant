@@ -62,6 +62,10 @@ export interface TableContext {
   positionIndex: PositionIndex; // 0 = BTN, 1 = SB, 2 = BB, 3 = UTG, 4 = MP, 5 = CO
   /** Если задано — используется вместо внутреннего расчёта эквити (ускоряет, когда эквити уже посчитан в UI). */
   equityPercent?: number;
+  /** Нижняя граница 95% CI эквити (для детекции маргинальных решений). Если задано вместе с equityHigh. */
+  equityLow?: number;
+  /** Верхняя граница 95% CI эквити. */
+  equityHigh?: number;
 }
 
 /** Результат расчёта аутов */

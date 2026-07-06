@@ -41,7 +41,7 @@ function isPreflopNeverFoldWeak(cards: Card[]): boolean {
  * Если в ctx передан equityPercent — он используется (один расчёт эквити в UI).
  */
 export function getAdvice(ctx: TableContext): AdviceResult {
-  const { phase, board, holeCards, potSize, toCall, numPlayers, positionIndex, equityPercent: eqFromCtx } = ctx;
+  const { phase, board, holeCards, potSize, toCall, numPlayers, positionIndex, equityPercent: eqFromCtx, equityLow, equityHigh } = ctx;
   const latePos = isLatePosition(positionIndex, numPlayers);
 
   if (holeCards.length !== 2) {
@@ -62,6 +62,12 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   const hasPotOdds = toCall > 0 && potSize > 0;
   const requiredEquity = hasPotOdds ? toCall / (potSize + toCall) : 0;
   const requiredEquityPct = requiredEquity * 100;
+
+  // Маргинальность: требуемая эквити попадает в 95% CI расчётного эквити.
+  // В этом случае выбор fold/call зависит от шума Монте-Карло — честно снижаем уверенность.
+  const hasCI = equityLow != null && equityHigh != null;
+  const isMarginal = hasPotOdds && hasCI && requiredEquityPct >= equityLow! && requiredEquityPct <= equityHigh!;
+  const marginalNote = isMarginal ? ' Решение маргинально — эквити близко к порогу колла.' : '';
 
   // Натс или очень сильная рука
   if (isNuts || strength.rank >= HandRank.FullHouse) {
@@ -133,8 +139,8 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   ) {
     return {
       action: 'fold',
-      confidence: 0.7,
-      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}`,
+      confidence: isMarginal ? 0.55 : 0.7,
+      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}${marginalNote}`,
     };
   }
 
@@ -189,7 +195,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   const posNote = latePos ? ' В поздней позиции можно рискнуть.' : '';
   return {
     action: margin >= callThreshold ? 'call' : 'fold',
-    confidence: 0.5,
-    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}`,
+    confidence: isMarginal ? 0.4 : 0.5,
+    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}${marginalNote}`,
   };
 }
