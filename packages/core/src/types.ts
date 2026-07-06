@@ -3,6 +3,8 @@
  * Карты: строка "As" (туз пики), "Kh" (король черви), "7d", "2c".
  */
 
+import type { Opponent } from './players/profiles';
+
 export const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'] as const;
 export const SUITS = ['s', 'h', 'd', 'c'] as const; // spades, hearts, diamonds, clubs
 
@@ -66,6 +68,8 @@ export interface TableContext {
   equityLow?: number;
   /** Верхняя граница 95% CI эквити. */
   equityHigh?: number;
+  /** Оппоненты с их метриками для будущей фичи профилей. Не используется в v1.3. */
+  opponents?: Opponent[];
 }
 
 /** Результат расчёта аутов */
