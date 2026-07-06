@@ -29,7 +29,7 @@ export function equity(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 500
+  iterations: number = 2000
 ): { win: number; tie: number; lose: number; total: number } {
   if (holeCards.length !== 2) {
     return { win: 0, tie: 0, lose: 1, total: 0 };
@@ -82,7 +82,7 @@ export function equityPercent(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 500
+  iterations: number = 2000
 ): number {
   const e = equity(holeCards, board, numOpponents, iterations);
   return Math.round((e.win + e.tie / 2) * 100);
@@ -93,7 +93,7 @@ export function equityPercentRange(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 500
+  iterations: number = 2000
 ): { percent: number; low: number; high: number } {
   const e = equity(holeCards, board, numOpponents, iterations);
   const total = e.total;
