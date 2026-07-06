@@ -1,5 +1,6 @@
 import { createDeck, fillRemaining, shuffleInPlace } from '../eval/deck';
 import { evaluatePlayerHand, compareHands } from '../eval/hand-eval';
+import { DEFAULT_ITERATIONS } from '../config/simulation';
 import type { Card } from '../types';
 
 /** Простой генератор с сидом: одинаковые входы → одинаковый эквити при расчёте */
@@ -29,7 +30,7 @@ export function equity(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 2000
+  iterations: number = DEFAULT_ITERATIONS
 ): { win: number; tie: number; lose: number; total: number } {
   if (holeCards.length !== 2) {
     return { win: 0, tie: 0, lose: 1, total: 0 };
@@ -82,7 +83,7 @@ export function equityPercent(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 2000
+  iterations: number = DEFAULT_ITERATIONS
 ): number {
   const e = equity(holeCards, board, numOpponents, iterations);
   return Math.round((e.win + e.tie / 2) * 100);
@@ -93,7 +94,7 @@ export function equityPercentRange(
   holeCards: Card[],
   board: Card[],
   numOpponents: number = 1,
-  iterations: number = 2000
+  iterations: number = DEFAULT_ITERATIONS
 ): { percent: number; low: number; high: number } {
   const e = equity(holeCards, board, numOpponents, iterations);
   const total = e.total;

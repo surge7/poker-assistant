@@ -21,6 +21,7 @@ import {
   CONFIDENCE,
 } from '../config/thresholds';
 import { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from '../config/preflop';
+import { DEFAULT_ITERATIONS } from '../config/simulation';
 
 const RANK_ORDER: Record<string, number> = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, 'T': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
 
@@ -69,7 +70,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   const { total: outs, improveChance } = board.length >= 3 && board.length < 5
     ? totalOuts(holeCards, board)
     : { total: 0, improveChance: 0 };
-  const eq = eqFromCtx != null ? eqFromCtx : equityPercent(holeCards, board, numPlayers - 1, 300);
+  const eq = eqFromCtx != null ? eqFromCtx : equityPercent(holeCards, board, numPlayers - 1, DEFAULT_ITERATIONS);
   const { isNuts } = compareToNuts(holeCards, board);
 
   // Требуемая эквити для колла: колл оправдан, если эквити >= toCall/(pot+toCall).

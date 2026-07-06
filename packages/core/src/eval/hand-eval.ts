@@ -188,8 +188,11 @@ function findStraightFlush(cards: Card[]): HandStrength | null {
     if (group.length < 5) continue;
     const s = findStraight(group);
     if (s) {
-      s.name = s.rank === HandRank.RoyalFlush ? 'Роял-флеш' : 'Стрит-флеш';
-      s.rank = s.rank === HandRank.Straight && rankValue(s.cards[0]) === 12 ? HandRank.RoyalFlush : HandRank.StraightFlush;
+      // Сначала определяем финальный rank, потом ставим имя по нему.
+      // Роял-флеш = стрит-флеш с тузом старшим (Broadway: A-K-Q-J-T одной масти).
+      const isRoyal = rankValue(s.cards[0]) === 12;
+      s.rank = isRoyal ? HandRank.RoyalFlush : HandRank.StraightFlush;
+      s.name = isRoyal ? 'Роял-флеш' : 'Стрит-флеш';
       return s;
     }
   }
