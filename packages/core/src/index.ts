@@ -54,7 +54,13 @@ export {
   CONFIDENCE,
 } from './config/thresholds';
 export { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from './config/preflop';
-export { DEFAULT_ITERATIONS, PREFLOP_ITERATIONS, POSTFLOP_ITERATIONS } from './config/simulation';
+export {
+  DEFAULT_ITERATIONS,
+  PREFLOP_ITERATIONS,
+  POSTFLOP_ITERATIONS,
+  INTERACTIVE_PREFLOP_ITERATIONS,
+  INTERACTIVE_POSTFLOP_ITERATIONS,
+} from './config/simulation';
 export { HAND_RANKINGS, topPercentHands } from './config/hand-rankings';
 export { VPIP_RANGE_NODES } from './config/vpip-ranges';
 export { PLAYER_PRESETS, getPreset } from './config/player-presets';
