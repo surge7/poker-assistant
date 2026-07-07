@@ -47,3 +47,16 @@ export const CONFIDENCE = {
   check: 0.5,
   invalid: 0,
 } as const;
+
+/**
+ * Модификатор порога фолда по агрессивности активного оппонента (PFR).
+ * Низкий PFR (нит-рейз ~10) → его ставка весомее → фолд шире → множитель > 1.
+ * Высокий PFR (маньяк ~45) → он блефует → колл шире → множитель < 1.
+ * Базовый PFR (TAG ~18) → множитель = 1 (без изменения).
+ *
+ * Формула: factor = clamp(1 + (PFR_BASE - opponentPfr) * SENSITIVITY, MIN, MAX)
+ */
+export const PFR_BASE = 18;
+export const PFR_MODIFIER_SENSITIVITY = 0.015;
+export const PFR_MODIFIER_MIN = 0.8;
+export const PFR_MODIFIER_MAX = 1.3;

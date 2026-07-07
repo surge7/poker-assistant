@@ -70,6 +70,8 @@ export interface TableContext {
   equityHigh?: number;
   /** Оппоненты с их метриками для будущей фичи профилей. Не используется в v1.3. */
   opponents?: Opponent[];
+  /** Индекс активного оппонента (ставщика) в opponents[]. Используется для PFR-модификатора. */
+  activeOpponentIndex?: number;
 }
 
 /** Результат расчёта аутов */
