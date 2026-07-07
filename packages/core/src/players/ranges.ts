@@ -7,12 +7,13 @@ import { topPercentHands } from '../config/hand-rankings';
  * Линейная интерполяция % диапазона по VPIP между узлами VPIP_RANGE_NODES,
  * затем топ-N% из 169 рук (hand-rankings.ts).
  *
- * ВНИМАНИЕ: упрощённая версия для рефактора. Полная реализация
- * (учёт PFR для сужения рейз-диапазона, обработка краёв VPIP<10 и >55) —
- * в фиче профилей игроков.
+ * При vpip<=0 (неизвестный игрок) возвращает пустой массив — это сигнал для
+ * equity «раздать случайную руку из всей колоды». Согласовано с raiseFactor()
+ * из profiles.ts, который тоже трактует vpip<=0 как «нет данных».
  */
 export function statsToRange(stats: PlayerStats): readonly string[] {
-  const rangePct = interpolateVpipToRange(stats.vpip);
+  if (stats.vpip <= 0) return [];
+  const rangePct = interpolateVpipToRange(clamp(stats.vpip, 0, 100));
   return topPercentHands(rangePct);
 }
 
@@ -30,4 +31,9 @@ function interpolateVpipToRange(vpip: number): number {
     }
   }
   return nodes[nodes.length - 1].rangePct;
+}
+
+/** Ограничение значения диапазоном [min; max]. */
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
 }
