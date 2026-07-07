@@ -3,6 +3,8 @@
  * Карты: строка "As" (туз пики), "Kh" (король черви), "7d", "2c".
  */
 
+import type { Opponent } from './players/profiles';
+
 export const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'] as const;
 export const SUITS = ['s', 'h', 'd', 'c'] as const; // spades, hearts, diamonds, clubs
 
@@ -62,6 +64,14 @@ export interface TableContext {
   positionIndex: PositionIndex; // 0 = BTN, 1 = SB, 2 = BB, 3 = UTG, 4 = MP, 5 = CO
   /** Если задано — используется вместо внутреннего расчёта эквити (ускоряет, когда эквити уже посчитан в UI). */
   equityPercent?: number;
+  /** Нижняя граница 95% CI эквити (для детекции маргинальных решений). Если задано вместе с equityHigh. */
+  equityLow?: number;
+  /** Верхняя граница 95% CI эквити. */
+  equityHigh?: number;
+  /** Оппоненты с их метриками для фичи профилей (VPIP/PFR). Используется в equity и advice. */
+  opponents?: Opponent[];
+  /** Индекс активного оппонента (ставщика) в opponents[]. Используется для PFR-модификатора. */
+  activeOpponentIndex?: number;
 }
 
 /** Результат расчёта аутов */

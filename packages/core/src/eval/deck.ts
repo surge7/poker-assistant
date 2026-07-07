@@ -1,4 +1,4 @@
-import { RANKS, SUITS, type Card } from './types';
+import { RANKS, SUITS, type Card } from '../types';
 
 const SUIT_NAMES: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
 

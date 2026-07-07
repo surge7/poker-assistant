@@ -5,6 +5,8 @@ import {
   equityPercentRange,
   compareToNuts,
   getAdvice,
+  PREFLOP_ITERATIONS,
+  POSTFLOP_ITERATIONS,
   clampNumPlayers,
   clampPositionIndex,
   getPositionHelpHtml,
@@ -825,7 +827,7 @@ export function initApp(): void {
     const strength = evaluatePlayerHand(holeCards, board);
     const outsList = board.length >= 3 && board.length < 5 ? countOuts(holeCards, board) : [];
     const { total: totalOutsCount, improveChance } = board.length >= 3 && board.length < 5 ? totalOuts(holeCards, board) : { total: 0, improveChance: 0 };
-    const iterationsAllIn = board.length === 0 ? 800 : 500;
+    const iterationsAllIn = board.length === 0 ? PREFLOP_ITERATIONS : POSTFLOP_ITERATIONS;
     const eqRange = equityPercentRange(holeCards, board, numPlayers - 1, iterationsAllIn);
     const nutsInfo = board.length === 5 ? compareToNuts(holeCards, board) : null;
     const phaseLabel = phase === 'preflop' ? 'Префлоп' : phase === 'flop' ? 'Флоп' : phase === 'turn' ? 'Терн' : 'Ривер';
@@ -838,6 +840,8 @@ export function initApp(): void {
       numPlayers,
       positionIndex,
       equityPercent: eqRange.percent,
+      equityLow: eqRange.low,
+      equityHigh: eqRange.high,
     });
 
     // Тактильная отдача на вердикте — только при ручном расчёте (не на auto-calc)

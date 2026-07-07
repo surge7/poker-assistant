@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getAdvice } from './advice';
-import type { TableContext } from './types';
+import type { TableContext } from '../types';
+import type { Opponent } from '../players/profiles';
 
 /** Базовый контекст: одна и та же рука и борд, меняем банк, toCall, позицию. */
 function baseContext(
@@ -138,5 +139,53 @@ describe('getAdvice', () => {
       expect(result.action).toBe('raise');
       expect(result.reason).not.toMatch(/аут|улучшени/i);
     });
+  });
+});
+
+describe('модификатор совета по PFR активного оппонента', () => {
+  // Базовый контекст: средняя рука на флопе, toCall>0, маргинальная эквити.
+  function baseCtx(overrides: Partial<TableContext> = {}): TableContext {
+    return {
+      phase: 'flop',
+      board: ['2d', '7c', '9h'],
+      holeCards: ['Ah', 'Kd'],
+      potSize: 100,
+      toCall: 60,
+      numPlayers: 2, // heads-up, один оппонент
+      positionIndex: 0,
+      equityPercent: 45,
+      equityLow: 40,
+      equityHigh: 50,
+      ...overrides,
+    };
+  }
+
+  it('против нита (PFR 10) порог фолда выше → совет чаще fold', () => {
+    const nit: Opponent[] = [{ position: 1, stats: { vpip: 12, pfr: 10 } }];
+    const ctx = baseCtx({ opponents: nit, activeOpponentIndex: 0 });
+    const result = getAdvice(ctx);
+    // Нит-рейз весомее → фолд или пониженная уверенность в колле.
+    expect(result.reason).toMatch(/тайтов|PFR|весомее|фолд/i);
+  });
+
+  it('против маньяка (PFR 45) порог фолда ниже → совет мягче к коллу', () => {
+    const maniac: Opponent[] = [{ position: 1, stats: { vpip: 60, pfr: 45 } }];
+    const ctx = baseCtx({ opponents: maniac, activeOpponentIndex: 0 });
+    const result = getAdvice(ctx);
+    expect(result.reason).toMatch(/агрессив|блеф|колл|шире/i);
+  });
+
+  it('без activeOpponentIndex модификатор не применяется (обратная совместимость)', () => {
+    const nit: Opponent[] = [{ position: 1, stats: { vpip: 12, pfr: 10 } }];
+    const ctx = baseCtx({ opponents: nit }); // без activeOpponentIndex
+    const result = getAdvice(ctx);
+    // Не должно быть заметки про тайтового оппонента.
+    expect(result.reason).not.toMatch(/тайтов|весомее/i);
+  });
+
+  it('без opponents вообще — как раньше (обратная совместимость)', () => {
+    const ctx = baseCtx({});
+    const result = getAdvice(ctx);
+    expect(result.action).toBeDefined();
   });
 });

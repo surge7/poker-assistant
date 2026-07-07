@@ -1,14 +1,16 @@
 import { createDeck, removeKnown } from './deck';
 import { evaluatePlayerHand, compareHands } from './hand-eval';
-import type { Card } from './types';
-import type { HandStrength } from './types';
+import type { Card } from '../types';
+import type { HandStrength } from '../types';
 
 /**
- * Натс на данном борде — лучшая возможная рука при этих пяти картах.
+ * Натс на данном борде — лучшая возможная рука из карт борда + любых двух из колоды.
+ * Работает для любого размера борда от 3 до 5 карт (флоп/терн/ривер).
+ * На флопе/терне это «текущий натс» — лучшая рука на данный момент.
  * Считается перебором всех комбинаций из 2 карт из оставшейся колоды.
  */
 export function getNuts(board: Card[]): HandStrength | null {
-  if (board.length !== 5) return null;
+  if (board.length < 3 || board.length > 5) return null;
 
   const deck = createDeck();
   const remaining = removeKnown(deck, board);
@@ -43,7 +45,7 @@ export function compareToNuts(holeCards: Card[], board: Card[]): {
       nuts: null,
       ourHand,
       isNuts: false,
-      description: 'Для натса нужны все 5 карт на борде (флоп + терн + ривер).',
+      description: 'Для натса нужно минимум 3 карты на борде (флоп).',
     };
   }
 

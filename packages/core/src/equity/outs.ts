@@ -1,6 +1,6 @@
-import { createDeck, removeKnown } from './deck';
-import type { Card } from './types';
-import type { OutsResult } from './types';
+import { createDeck, removeKnown } from '../eval/deck';
+import type { Card } from '../types';
+import type { OutsResult } from '../types';
 
 /** Приближённые шансы улучшения: флоп→терн (1 карта), терн→ривер (1 карта) */
 /** Шанс улучшения на двух улицах (флоп → ривер): 1 - (1 - outs/47)(1 - outs/46) */
@@ -20,7 +20,8 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   const dead = [...holeCards, ...board];
   const remaining = removeKnown(deck, dead);
 
-  // Флеш-дро: одна масть в руке, две на борде
+  // Флеш-дро: нужно ровно 4 одномастных карты (добираем 5-ю за одну улицу = классический flush draw, 9 аутов).
+  // 2 или 3 одномастных на флопе — это backdoor-flush (нужно 2 карты за 2 улицы, ~4%), он НЕ считается аутом.
   const flushCards = getFlushOutCards(holeCards, board, remaining);
   if (flushCards.length > 0) {
     const oneCard = board.length === 5 ? flushCards.length / remaining.length : IMPROVE_RULE.twoCards(flushCards.length);
@@ -71,19 +72,22 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   return results;
 }
 
-/** Упрощённо: один результат «всего аутов» и шанс улучшения. На флопе — на две улицы (Rule of 4); на терне — на одну (Rule of 2). */
+/**
+ * Упрощённо: один результат «всего аутов» и шанс улучшения. На флопе — на две улицы (Rule of 4); на терне — на одну (Rule of 2).
+ * Ауты объединяются по множеству карт: если одна карта даёт и флеш, и стрит (например, Th в монстр-дро),
+ * она считается один раз, а не дважды — иначе double-counting завышает improveChance.
+ */
 export function totalOuts(holeCards: Card[], board: Card[]): { total: number; improveChance: number } {
   const list = countOuts(holeCards, board);
-  const total = Math.min(
-    list.reduce((sum, r) => sum + r.outs, 0),
-    46
-  );
+  const outCardSet = new Set<Card>();
+  for (const r of list) for (const c of r.outCards ?? []) outCardSet.add(c);
+  const total = Math.min(outCardSet.size, 46);
   const remaining = 52 - holeCards.length - board.length;
   const improveChance =
     remaining > 0
       ? board.length === 3
         ? IMPROVE_RULE.twoCards(total) // флоп: две карты впереди (Rule of 4)
-        : total / remaining // терн или меньше: одна карта впереди (Rule of 2)
+        : total / remaining // терн или меньше: одна карта впереде (Rule of 2)
       : 0;
   return { total, improveChance };
 }
@@ -96,7 +100,9 @@ function getFlushOutCards(holeCards: Card[], board: Card[], remaining: Card[]): 
   for (const [s, count] of Object.entries(suitCount)) {
     const inHole = holeCards.some((c) => c[1] === s);
     const onBoard = board.some((c) => c[1] === s);
-    if (count >= 2 && inHole && onBoard) {
+    // Классический flush draw: ровно 4 одномастных (1 в руке + 3 на борде, либо 2+2) — добираем 5-ю за улицу.
+    // При count <= 3 это backdoor-flush (шанс ~4%), он не считается аутом на одной улице.
+    if (count === 4 && inHole && onBoard) {
       return remaining.filter((c) => c[1] === s);
     }
   }
@@ -108,15 +114,29 @@ function getStraightOutCards(holeCards: Card[], board: Card[], remaining: Card[]
     '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, 'T': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12,
   };
   const values = [...holeCards, ...board].map((c) => rankOrder[c[0]] ?? -1);
+  const has = (v: number) => values.includes(v);
   const needed = new Set<number>();
+
   for (let r = 0; r <= 12; r++) {
-    const test = [...values, r];
-    const sorted = [...new Set(test)].sort((a, b) => b - a);
-    for (let i = 0; i <= sorted.length - 5; i++) {
-      const run = sorted.slice(i, i + 5);
-      if (run.length === 5 && run[0] - run[4] === 4) {
+    // Временно считаем что ранг r у нас в руке.
+    const testHas = (v: number) => v === r || has(v);
+
+    // Обычные стриты: 5 идущих подряд рангов (от r_top вниз).
+    // r_top может быть от 4 (5-high: 4-3-2-1-0) до 12 (Broadway: 12-11-10-9-8).
+    for (let top = 12; top >= 4; top--) {
+      if (testHas(top) && testHas(top - 1) && testHas(top - 2) && testHas(top - 3) && testHas(top - 4)) {
         needed.add(r);
         break;
+      }
+    }
+
+    // Wheel: A-2-3-4-5 (12, 0, 1, 2, 3). Обрабатываем отдельно —
+    // не покрывается обычным циклом выше (ранги не идущие подряд из-за туза).
+    // Проверяем только если ранг r входит в wheel-окно.
+    if ([12, 0, 1, 2, 3].includes(r)) {
+      const wheelRanks = [12, 0, 1, 2, 3];
+      if (wheelRanks.every(testHas)) {
+        needed.add(r);
       }
     }
   }
