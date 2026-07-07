@@ -60,3 +60,18 @@ export const PFR_BASE = 18;
 export const PFR_MODIFIER_SENSITIVITY = 0.015;
 export const PFR_MODIFIER_MIN = 0.8;
 export const PFR_MODIFIER_MAX = 1.3;
+
+/**
+ * Коэффициенты имплайд-оддсов: во сколько раз снижаем требуемую эквити
+ * для рук с потенциальной выгодой от улучшения.
+ * 1.0 = без имплайдов (чистые pot-оддсы).
+ *
+ * Сет-майнинг (карманные пары 22-TT на префлопе): сет ~11.8%, но выигрыш
+ * превышает колл в несколько раз → 0.65 (колл при 65% от требуемой).
+ * Сильное дро (аутов ≥ 8 на флопе): реализуется на ривере, добираем → 0.75.
+ * Монстр-дро (аутов ≥ 13, флеш+стрит): почти гарантия → 0.65.
+ */
+export const IMPLIED_PAIR_FACTOR = 0.65;
+export const IMPLIED_STRONG_DRAW_FACTOR = 0.75;
+export const IMPLIED_MONSTER_DRAW_FACTOR = 0.65;
+export const IMPLIED_MONSTER_DRAW_OUTS = 13;

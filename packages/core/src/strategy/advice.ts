@@ -23,6 +23,10 @@ import {
   PFR_MODIFIER_SENSITIVITY,
   PFR_MODIFIER_MIN,
   PFR_MODIFIER_MAX,
+  IMPLIED_PAIR_FACTOR,
+  IMPLIED_STRONG_DRAW_FACTOR,
+  IMPLIED_MONSTER_DRAW_FACTOR,
+  IMPLIED_MONSTER_DRAW_OUTS,
 } from '../config/thresholds';
 import { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from '../config/preflop';
 import { DEFAULT_ITERATIONS } from '../config/simulation';
@@ -108,6 +112,34 @@ export function getAdvice(ctx: TableContext): AdviceResult {
       ? ` Против агрессивного оппонента (PFR ~${activePfr}%) можно коллить шире — он часто блефует.`
       : '';
 
+  // Имплайд-оддсы: снижаем требуемую эквити для рук с потенциальной выгодой от улучшения.
+  // Сет-майнинг (карманные пары 22-TT на префлопе) и сильные дро на флопе/терне.
+  // В ранней позиции имплайды слабее: без позиции труднее добрать выигрыш при улучшении,
+  // поэтому коэффициент ближе к 1.0 (меньше скидки). В поздней — полные имплайды.
+  let impliedFactor = 1.0;
+  let impliedReason = '';
+  if (phase === 'preflop' && isPocketPair(holeCards) && !isPremiumPocketPair(holeCards)) {
+    // Сет-майнинг: поздняя позиция — полная скидка, ранняя — половина скидки.
+    const discount = latePos ? (1 - IMPLIED_PAIR_FACTOR) : (1 - IMPLIED_PAIR_FACTOR) * 0.4;
+    impliedFactor = 1 - discount;
+    impliedReason = 'сет-майнинг';
+  } else if (board.length >= 3 && board.length < 5) {
+    if (outs >= IMPLIED_MONSTER_DRAW_OUTS) {
+      const discount = latePos ? (1 - IMPLIED_MONSTER_DRAW_FACTOR) : (1 - IMPLIED_MONSTER_DRAW_FACTOR) * 0.5;
+      impliedFactor = 1 - discount;
+      impliedReason = 'монстр-дро';
+    } else if (outs >= 8) {
+      const discount = latePos ? (1 - IMPLIED_STRONG_DRAW_FACTOR) : (1 - IMPLIED_STRONG_DRAW_FACTOR) * 0.5;
+      impliedFactor = 1 - discount;
+      impliedReason = 'сильное дро';
+    }
+  }
+  const effectiveRequiredEquityPct = requiredEquityPct * impliedFactor;
+  const impliedNote =
+    impliedFactor < 1.0
+      ? ` Имплайд-оддсы (${impliedReason}): колл оправдан при эквити ≥ ${Math.round(effectiveRequiredEquityPct)}% от требуемых ${Math.round(requiredEquityPct)}%.`
+      : '';
+
   // Натс или очень сильная рука
   if (isNuts || strength.rank >= HandRank.FullHouse) {
     return {
@@ -148,11 +180,15 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   // Слабый дро без оддов: фолд, если эквити ниже порога (в поздней позиции порог ниже — чаще колл)
   // На префлопе не фолдим только премиум (AA–JJ) и бродвеи по «слабости»; мелкие пары (TT и ниже) — по эквити.
   const foldBarPct = toCall > 0
-    ? Math.max(requiredEquityPct * FOLD_EQUITY_MULTIPLIER, latePos ? FOLD_BAR_LATE_PCT : FOLD_BAR_EARLY_PCT) * pfrModifier
+    ? Math.max(effectiveRequiredEquityPct * FOLD_EQUITY_MULTIPLIER, latePos ? FOLD_BAR_LATE_PCT : FOLD_BAR_EARLY_PCT) * pfrModifier
     : 100;
   const isPreflopNeverFold = phase === 'preflop' && isPreflopNeverFoldWeak(holeCards);
+  // Карманные пары на префлопе — это сет-майнинг (имплайды), не «слабая рука без аутов».
+  // Не фолдим их по этому правилу; пусть решение принимает borderline-блок с effectiveRequiredEquity.
+  const isPreflopSetMine = phase === 'preflop' && isPocketPair(holeCards) && !isPremiumPocketPair(holeCards);
   if (
     !isPreflopNeverFold &&
+    !isPreflopSetMine &&
     strength.rank <= HandRank.Pair &&
     outs < 5 &&
     toCall > 0 &&
@@ -166,22 +202,25 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     return {
       action: 'fold',
       confidence: latePos ? CONFIDENCE.foldWeakHandLate : CONFIDENCE.foldWeakHandEarly,
-      reason: `${weakHandNote}, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}${oppNote}`,
+      reason: `${weakHandNote}, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}${oppNote}${impliedNote}`,
     };
   }
 
   // Низкая эквити относительно пот-оддов: колл не окупается (в поздней позиции — чуть мягче)
-  // На префлопе не фолдим по этому правилу только премиум (AA–JJ) и бродвеи
+  // На префлопе не фолдим по этому правилу только премиум (AA–JJ) и бродвеи.
+  // Карманные пары с имплайдами (сет-майнинг) тоже пропускают эту ветку —
+  // у них effectiveRequiredEquityPct уже снижена, запас lowEqFoldMargin не нужен.
   const lowEqFoldMargin = latePos ? LOW_EQ_FOLD_MARGIN_LATE : LOW_EQ_FOLD_MARGIN_EARLY;
   if (
     !isPreflopNeverFold &&
+    !isPreflopSetMine &&
     toCall > 0 &&
-    eq < requiredEquityPct * lowEqFoldMargin
+    eq < effectiveRequiredEquityPct * lowEqFoldMargin
   ) {
     return {
       action: 'fold',
       confidence: isMarginal ? CONFIDENCE.foldLowEquityMarginal : CONFIDENCE.foldLowEquity,
-      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}${marginalNote}${oppNote}`,
+      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}${marginalNote}${oppNote}${impliedNote}`,
     };
   }
 
@@ -211,15 +250,16 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     };
   }
 
-  // Эквити достаточно для колла — чем больше запас над требуемой эквити, тем увереннее колл
-  const margin = eq - requiredEquityPct;
+  // Эквити достаточно для колла — чем больше запас над требуемой эквити, тем увереннее колл.
+  // margin считается от effectiveRequiredEquityPct (с учётом имплайд-оддсов).
+  const margin = eq - effectiveRequiredEquityPct;
   if (margin >= CALL_MARGIN_STRONG_PCT) {
     const posNote = latePos ? ' Позиция позволяет играть шире.' : '';
     const potNote = requiredEquityPct < 20 ? ' Банк даёт хорошие оддсы.' : '';
     return {
       action: 'call',
       confidence: latePos ? CONFIDENCE.callMarginStrongLate : CONFIDENCE.callMarginStrong,
-      reason: `Эквити ~${eq}%, нужно ~${Math.round(requiredEquityPct)}%. Колл выгоден.${potNote}${posNote}`,
+      reason: `Эквити ~${eq}%, нужно ~${Math.round(requiredEquityPct)}%. Колл выгоден.${potNote}${posNote}${impliedNote}`,
     };
   }
   if (margin >= CALL_MARGIN_OK_PCT) {
@@ -227,7 +267,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     return {
       action: 'call',
       confidence: latePos ? CONFIDENCE.callMarginOkLate : CONFIDENCE.callMarginOk,
-      reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%. Колл допустим.${posNote}`,
+      reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%. Колл допустим.${posNote}${impliedNote}`,
     };
   }
 
@@ -240,6 +280,6 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   return {
     action: margin >= callThreshold ? 'call' : 'fold',
     confidence: isMarginal ? CONFIDENCE.borderlineMarginal : CONFIDENCE.borderline,
-    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}${marginalNote}${oppNote}`,
+    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}${marginalNote}${oppNote}${impliedNote}`,
   };
 }

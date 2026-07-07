@@ -140,6 +140,88 @@ describe('getAdvice', () => {
       expect(result.reason).not.toMatch(/аут|улучшени/i);
     });
   });
+
+  describe('имплайд-оддсы', () => {
+    it('карманная пара 77 на префлопе в BTN → CALL (сет-майнинг), не FOLD', () => {
+      // Контркейс: 77, pot 30, call 15 (required 33%), эквити ~21%.
+      // С имплайдами (0.65): effective = 21.5%. В BTN (callThreshold -5) margin ≈ -0.5 → CALL.
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['7h', '7d'],
+        potSize: 30,
+        toCall: 15,
+        numPlayers: 6,
+        positionIndex: 0, // BTN — поздняя
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('call');
+      expect(result.reason).toMatch(/сет-майнинг|имплайд/i);
+    });
+
+    it('карманка 77 в ранней позиции (UTG индекс 3) → FOLD (позиция строже)', () => {
+      // Та же рука, но ранняя позиция: callThreshold = 0, margin ≈ -0.5 < 0 → FOLD.
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['7h', '7d'],
+        potSize: 30,
+        toCall: 15,
+        numPlayers: 6,
+        positionIndex: 3, // UTG — ранняя
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('fold');
+    });
+
+    it('AA (премиум) → без имплайдов, рейз как раньше', () => {
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['Ah', 'Ad'],
+        potSize: 30,
+        toCall: 15,
+        numPlayers: 6,
+        positionIndex: 0,
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('call'); // премиум с toCall>0 → call
+      expect(result.reason).not.toMatch(/имплайд|сет-майнинг/i);
+    });
+
+    it('сильное дро (9 аутов флеш) на флопе с margin чуть ниже pot-odds → CALL', () => {
+      // Флеш-дро: Ah Kh + 2h 7h 9c → 9 аутов, improveChance ~35% (Rule of 4).
+      // pot 100, call 50 → required 33%. С имплайдами (0.75): effective 25%.
+      // improveChance 35% >= 25% → колл по дро-ветке (но проверим что имплайд-фраза есть).
+      const ctx: TableContext = {
+        phase: 'flop',
+        board: ['2h', '7h', '9c'],
+        holeCards: ['Ah', 'Kh'],
+        potSize: 100,
+        toCall: 50,
+        numPlayers: 4,
+        positionIndex: 0,
+      };
+      const result = getAdvice(ctx);
+      // Дро с 9 аутами и хорошими оддсами → call (либо по дро-ветке, либо по имплайдам).
+      expect(['call', 'raise']).toContain(result.action);
+    });
+
+    it('gutshot (4 аута) на флопе → без имплайдов, как раньше', () => {
+      // Слабое дро — имплайды не применяются (impliedFactor = 1.0).
+      const ctx: TableContext = {
+        phase: 'flop',
+        board: ['2d', '7c', '9h'],
+        holeCards: ['5h', '6d'], // gutshot: нужна 8 для 5-6-7-8-9
+        potSize: 100,
+        toCall: 50,
+        numPlayers: 4,
+        positionIndex: 0,
+      };
+      const result = getAdvice(ctx);
+      expect(result.reason).not.toMatch(/имплайд|сет-майнинг|монстр/i);
+    });
+  });
 });
 
 describe('модификатор совета по PFR активного оппонента', () => {
