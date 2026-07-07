@@ -68,7 +68,7 @@ export interface TableContext {
   equityLow?: number;
   /** Верхняя граница 95% CI эквити. */
   equityHigh?: number;
-  /** Оппоненты с их метриками для будущей фичи профилей. Не используется в v1.3. */
+  /** Оппоненты с их метриками для фичи профилей (VPIP/PFR). Используется в equity и advice. */
   opponents?: Opponent[];
   /** Индекс активного оппонента (ставщика) в opponents[]. Используется для PFR-модификатора. */
   activeOpponentIndex?: number;

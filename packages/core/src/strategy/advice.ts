@@ -231,8 +231,11 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     };
   }
 
-  // Близко к порогу — в поздней позиции допускаем колл при небольшом минусе по эквити
-  const callThreshold = latePos ? CALL_THRESHOLD_LATE_PCT : CALL_THRESHOLD_EARLY_PCT;
+  // Близко к порогу — в поздней позиции допускаем колл при небольшом минусе по эквити.
+  // pfrModifier применяется и к callThreshold: против нита коллить труднее (порог выше),
+  // против маньяка — легче. Это согласует borderline-решение с oppNote в reason.
+  const baseCallThreshold = latePos ? CALL_THRESHOLD_LATE_PCT : CALL_THRESHOLD_EARLY_PCT;
+  const callThreshold = baseCallThreshold * pfrModifier;
   const posNote = latePos ? ' В поздней позиции можно рискнуть.' : '';
   return {
     action: margin >= callThreshold ? 'call' : 'fold',

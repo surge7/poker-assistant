@@ -44,6 +44,7 @@ export type { TablePosition } from './strategy/positions';
 // Игроки (players/) — для будущей фичи профилей
 export type { PlayerStats, Opponent } from './players/profiles';
 export { raiseFactor } from './players/profiles';
+export { statsToRange } from './players/ranges';
 
 // Конфиги (config/) — для прямой настройки стратегии и фичи профилей
 export {
