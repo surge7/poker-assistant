@@ -19,6 +19,10 @@ import {
   CALL_THRESHOLD_EARLY_PCT,
   CALL_THRESHOLD_LATE_PCT,
   CONFIDENCE,
+  PFR_BASE,
+  PFR_MODIFIER_SENSITIVITY,
+  PFR_MODIFIER_MIN,
+  PFR_MODIFIER_MAX,
 } from '../config/thresholds';
 import { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from '../config/preflop';
 import { DEFAULT_ITERATIONS } from '../config/simulation';
@@ -50,6 +54,11 @@ function isPreflopNeverFoldWeak(cards: Card[]): boolean {
   const r1 = RANK_ORDER[cards[1][0]] ?? -1;
   if (r0 === r1) return r0 >= PREMIUM_PAIR_MIN_RANK; // только AA, KK, QQ, JJ
   return r0 >= BROADWAY_MIN_RANK && r1 >= BROADWAY_MIN_RANK; // две бродвей-карты (T,J,Q,K,A)
+}
+
+/** Ограничение PFR-модификатора в диапазоне [MIN, MAX] из конфига. */
+function clampPfr(v: number): number {
+  return Math.max(PFR_MODIFIER_MIN, Math.min(PFR_MODIFIER_MAX, v));
 }
 
 /**
@@ -85,6 +94,19 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   const hasCI = equityLow != null && equityHigh != null;
   const isMarginal = hasPotOdds && hasCI && requiredEquityPct >= equityLow! && requiredEquityPct <= equityHigh!;
   const marginalNote = isMarginal ? ' Решение маргинально — эквити близко к порогу колла.' : '';
+
+  // PFR-модификатор порога фолда по агрессивности активного оппонента.
+  const activeOpp = ctx.opponents?.[ctx.activeOpponentIndex ?? -1];
+  const activePfr = activeOpp?.stats && activeOpp.stats.pfr > 0 ? activeOpp.stats.pfr : PFR_BASE;
+  const pfrModifier = clampPfr(
+    1 + (PFR_BASE - activePfr) * PFR_MODIFIER_SENSITIVITY,
+  );
+  const oppNote =
+    pfrModifier > 1.05
+      ? ` Против тайтового оппонента (PFR ~${activePfr}%) его ставка весомее — фолд оправданнее.`
+      : pfrModifier < 0.95
+      ? ` Против агрессивного оппонента (PFR ~${activePfr}%) можно коллить шире — он часто блефует.`
+      : '';
 
   // Натс или очень сильная рука
   if (isNuts || strength.rank >= HandRank.FullHouse) {
@@ -125,7 +147,9 @@ export function getAdvice(ctx: TableContext): AdviceResult {
 
   // Слабый дро без оддов: фолд, если эквити ниже порога (в поздней позиции порог ниже — чаще колл)
   // На префлопе не фолдим только премиум (AA–JJ) и бродвеи по «слабости»; мелкие пары (TT и ниже) — по эквити.
-  const foldBarPct = toCall > 0 ? Math.max(requiredEquityPct * FOLD_EQUITY_MULTIPLIER, latePos ? FOLD_BAR_LATE_PCT : FOLD_BAR_EARLY_PCT) : 100;
+  const foldBarPct = toCall > 0
+    ? Math.max(requiredEquityPct * FOLD_EQUITY_MULTIPLIER, latePos ? FOLD_BAR_LATE_PCT : FOLD_BAR_EARLY_PCT) * pfrModifier
+    : 100;
   const isPreflopNeverFold = phase === 'preflop' && isPreflopNeverFoldWeak(holeCards);
   if (
     !isPreflopNeverFold &&
@@ -142,7 +166,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     return {
       action: 'fold',
       confidence: latePos ? CONFIDENCE.foldWeakHandLate : CONFIDENCE.foldWeakHandEarly,
-      reason: `${weakHandNote}, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}`,
+      reason: `${weakHandNote}, эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${latePos ? ' В поздней позиции можно было бы коллить шире.' : ''}${potNote}${oppNote}`,
     };
   }
 
@@ -157,7 +181,7 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     return {
       action: 'fold',
       confidence: isMarginal ? CONFIDENCE.foldLowEquityMarginal : CONFIDENCE.foldLowEquity,
-      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}${marginalNote}`,
+      reason: `Эквити ~${eq}% ниже требуемых для колла (~${Math.round(requiredEquityPct)}%). При таком соотношении банк/ставка — фолд.${latePos ? ' Позиция немного смягчает.' : ''}${marginalNote}${oppNote}`,
     };
   }
 
@@ -213,6 +237,6 @@ export function getAdvice(ctx: TableContext): AdviceResult {
   return {
     action: margin >= callThreshold ? 'call' : 'fold',
     confidence: isMarginal ? CONFIDENCE.borderlineMarginal : CONFIDENCE.borderline,
-    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}${marginalNote}`,
+    reason: `Эквити ~${eq}% при требуемых ~${Math.round(requiredEquityPct)}%.${posNote}${marginalNote}${oppNote}`,
   };
 }
