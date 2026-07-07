@@ -56,3 +56,11 @@ export { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from './config/preflop';
 export { DEFAULT_ITERATIONS, PREFLOP_ITERATIONS, POSTFLOP_ITERATIONS } from './config/simulation';
 export { HAND_RANKINGS, topPercentHands } from './config/hand-rankings';
 export { VPIP_RANGE_NODES } from './config/vpip-ranges';
+export { PLAYER_PRESETS, getPreset } from './config/player-presets';
+export type { PlayerPresetKey, PlayerPreset } from './config/player-presets';
+export {
+  PFR_BASE,
+  PFR_MODIFIER_SENSITIVITY,
+  PFR_MODIFIER_MIN,
+  PFR_MODIFIER_MAX,
+} from './config/thresholds';
