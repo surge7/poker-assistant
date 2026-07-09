@@ -2,7 +2,6 @@ import {
   evaluatePlayerHand,
   countOuts,
   totalOuts,
-  equityPercentRange,
   compareToNuts,
   getAdvice,
   PREFLOP_ITERATIONS,
@@ -18,6 +17,7 @@ import {
   type TablePosition,
 } from '@poker/core';
 import { impactLight, impactMedium, selectionChanged, notificationWarning, notificationSuccess } from './haptics';
+import { calcEquitySync } from './equity-fallback';
 import { cardToHtml, setPreviewCardImage, setTriggerCardImage } from './cards';
 import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
 
@@ -779,9 +779,13 @@ export function initApp(): void {
   const resultsContent = document.getElementById('results-content')!;
 
   // Web Worker для расчёта эквити — UI не блокируется при тяжёлом Монте-Карло.
-  // В portable-режиме (IIFE, без Worker поддержки) — null, fallback на sync расчёт.
+  // Fallback на синхронный расчёт (calcEquitySync), если Worker недоступен:
+  // portable-режим (IIFE), Android WebView (Worker не загрузился), старые браузеры.
   let equityWorker: Worker | null = null;
   try {
+    // type: 'module' — Vite собирает equity-worker.ts в отдельный ES-модуль chunk.
+    // В Android WebView (Capacitor, androidScheme: 'https') Worker грузится по
+    // относительному URL через import.meta.url — обычно работает, но проверяем try/catch.
     equityWorker = new Worker(new URL('./equity-worker.ts', import.meta.url), { type: 'module' });
   } catch {
     equityWorker = null; // fallback на синхронный расчёт
@@ -801,11 +805,16 @@ export function initApp(): void {
     iterations: number,
   ): Promise<{ percent: number; low: number; high: number }> {
     if (!equityWorker) {
-      // Portable-режим или Worker не поддерживается — sync fallback.
-      return Promise.resolve(equityPercentRange(holeCards, board, numOpponents, iterations));
+      // Worker недоступен — синхронный расчёт (блокирует, но корректный).
+      return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
     }
     const id = ++equityRequestId;
-    equityWorker.postMessage({ id, holeCards, board, numOpponents, iterations });
+    try {
+      equityWorker.postMessage({ id, holeCards, board, numOpponents, iterations });
+    } catch {
+      // Worker сломался в runtime — fallback на sync.
+      return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
+    }
     return new Promise(resolve => {
       const handler = (e: MessageEvent) => {
         const data = e.data as { id: number; percent: number; low: number; high: number };
