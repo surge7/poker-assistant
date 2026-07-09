@@ -778,7 +778,47 @@ export function initApp(): void {
 
   const resultsContent = document.getElementById('results-content')!;
 
-  function updateResults(triggeredByUser = false): void {
+  // Web Worker для расчёта эквити — UI не блокируется при тяжёлом Монте-Карло.
+  // В portable-режиме (IIFE, без Worker поддержки) — null, fallback на sync расчёт.
+  let equityWorker: Worker | null = null;
+  try {
+    equityWorker = new Worker(new URL('./equity-worker.ts', import.meta.url), { type: 'module' });
+  } catch {
+    equityWorker = null; // fallback на синхронный расчёт
+  }
+
+  // Монотонный ID запросов — для отмены устаревших результатов.
+  let equityRequestId = 0;
+
+  /**
+   * Запрос эквити через Worker (async). Возвращает Promise с результатом.
+   * Если Worker недоступен — синхронный fallback (блокирует UI, но работает).
+   */
+  function requestEquity(
+    holeCards: Card[],
+    board: Card[],
+    numOpponents: number,
+    iterations: number,
+  ): Promise<{ percent: number; low: number; high: number }> {
+    if (!equityWorker) {
+      // Portable-режим или Worker не поддерживается — sync fallback.
+      return Promise.resolve(equityPercentRange(holeCards, board, numOpponents, iterations));
+    }
+    const id = ++equityRequestId;
+    equityWorker.postMessage({ id, holeCards, board, numOpponents, iterations });
+    return new Promise(resolve => {
+      const handler = (e: MessageEvent) => {
+        const data = e.data as { id: number; percent: number; low: number; high: number };
+        if (data.id === id) {
+          equityWorker!.removeEventListener('message', handler);
+          resolve({ percent: data.percent, low: data.low, high: data.high });
+        }
+      };
+      equityWorker!.addEventListener('message', handler);
+    });
+  }
+
+  async function updateResults(triggeredByUser = false): Promise<void> {
     const holeCards = readCardSelects(holeContainer, 'hole');
     const boardCards = readCardSelects(boardContainer, 'board');
     const numPlayers = clampNumPlayers(parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6);
@@ -834,7 +874,11 @@ export function initApp(): void {
     const iterationsAllIn = triggeredByUser
       ? (board.length === 0 ? PREFLOP_ITERATIONS : POSTFLOP_ITERATIONS)
       : (board.length === 0 ? INTERACTIVE_PREFLOP_ITERATIONS : INTERACTIVE_POSTFLOP_ITERATIONS);
-    const eqRange = equityPercentRange(holeCards, board, numPlayers - 1, iterationsAllIn);
+    // Расчёт эквити через Web Worker (async) — UI не блокируется.
+    const currentRequestId = equityRequestId + 1; // requestEquity инкрементирует
+    const eqRange = await requestEquity(holeCards, board, numPlayers - 1, iterationsAllIn);
+    // Если пришёл новый запрос, пока этот считался — игнорируем устаревший результат.
+    if (currentRequestId !== equityRequestId) return;
     const nutsInfo = board.length === 5 ? compareToNuts(holeCards, board) : null;
     const phaseLabel = phase === 'preflop' ? 'Префлоп' : phase === 'flop' ? 'Флоп' : phase === 'turn' ? 'Терн' : 'Ривер';
     const advice = getAdvice({
@@ -955,18 +999,13 @@ export function initApp(): void {
   if (btnCalculate) btnCalculate.addEventListener('click', () => {
     impactLight();
     const btn = btnCalculate as HTMLButtonElement;
-    // Показваем loading-состояние до тяжёлого синхронного расчёта эквити.
-    // Двойной rAF отдаёт кадр браузеру, чтобы он успел отрисовать спиннер.
+    // Loading-состояние пока Worker считает эквити (async, UI не блокируется).
     btn.classList.add('is-calculating');
     btn.disabled = true;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          updateResults(true);
-        } finally {
-          btn.classList.remove('is-calculating');
-          btn.disabled = false;
-        }
+      updateResults(true).finally(() => {
+        btn.classList.remove('is-calculating');
+        btn.disabled = false;
       });
     });
   });
