@@ -1,6 +1,8 @@
 import { createDeck, removeKnown } from '../eval/deck';
+import { evaluatePlayerHand } from '../eval/hand-eval';
 import type { Card } from '../types';
 import type { OutsResult } from '../types';
+import { HandRank } from '../types';
 
 /** Приближённые шансы улучшения: флоп→терн (1 карта), терн→ривер (1 карта) */
 /** Шанс улучшения на двух улицах (флоп → ривер): 1 - (1 - outs/47)(1 - outs/46) */
@@ -16,13 +18,19 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
   const results: OutsResult[] = [];
   if (holeCards.length !== 2 || board.length < 3) return results;
 
+  // Рука уже готова (стрит и выше) — ауты на сбор самой комбинации не имеют
+  // смысла. Оставляем только улучшения категории (сет → фулл/каре).
+  const strength = evaluatePlayerHand(holeCards, board);
+  const isMadeHand = strength.rank >= HandRank.Straight;
+
   const deck = createDeck();
   const dead = [...holeCards, ...board];
   const remaining = removeKnown(deck, dead);
 
   // Флеш-дро: нужно ровно 4 одномастных карты (добираем 5-ю за одну улицу = классический flush draw, 9 аутов).
   // 2 или 3 одномастных на флопе — это backdoor-flush (нужно 2 карты за 2 улицы, ~4%), он НЕ считается аутом.
-  const flushCards = getFlushOutCards(holeCards, board, remaining);
+  // На готовой руке (стрит+) флеш-дро не считаем — либо флеш уже собран, либо он не нужен.
+  const flushCards = !isMadeHand ? getFlushOutCards(holeCards, board, remaining) : [];
   if (flushCards.length > 0) {
     const oneCard = board.length === 5 ? flushCards.length / remaining.length : IMPROVE_RULE.twoCards(flushCards.length);
     results.push({
@@ -33,8 +41,9 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
     });
   }
 
-  // Стрит-дро (открытый стрит-дро): карты для стрита
-  const straightCards = getStraightOutCards(holeCards, board, remaining);
+  // Стрит-дро (открытый стрит-дро): карты для стрита.
+  // На готовой руке не считаем — стрит либо собран, либо не нужен.
+  const straightCards = !isMadeHand ? getStraightOutCards(holeCards, board, remaining) : [];
   if (straightCards.length > 0) {
     const oneCard = board.length === 5 ? straightCards.length / remaining.length : IMPROVE_RULE.twoCards(straightCards.length);
     results.push({
@@ -57,8 +66,9 @@ export function countOuts(holeCards: Card[], board: Card[]): OutsResult[] {
     });
   }
 
-  // Оверкарты: карты выше борда для пары
-  const overcardCards = getOvercardOutCards(holeCards, board, remaining);
+  // Оверкарты: карты выше борда для пары.
+  // На готовой руке (стрит+) пара оверкартой не улучшает комбинацию — не считаем.
+  const overcardCards = !isMadeHand ? getOvercardOutCards(holeCards, board, remaining) : [];
   if (overcardCards.length > 0) {
     const chance = board.length === 5 ? overcardCards.length / remaining.length : IMPROVE_RULE.twoCards(overcardCards.length);
     results.push({

@@ -24,6 +24,17 @@ import { loadState, saveState, clearState, getDefaultState, type AppState } from
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = ['s', 'h', 'd', 'c'];
 
+/**
+ * Прочитать число из input: parseFloat (не теряет дробные блайнды) с clamp от 0.
+ * Невалидный/пустой ввод → 0. Отрицательные отбрасываются (в покере ставок < 0 не бывает).
+ * Округление до 2 знаков避免了 float-ошибок в пот-оддсах.
+ */
+function parseAmount(input: HTMLInputElement): number {
+  const v = parseFloat(input.value);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return Math.round(v * 100) / 100;
+}
+
 /** Порядок для сетки карт: как на колоде — масти c, s, h, d; ранги A, 2…K */
 const SUITS_GRID = ['c', 's', 'h', 'd'] as const;
 const RANKS_GRID = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'] as const;
@@ -206,6 +217,13 @@ function buildCardPickerSlot(
   wrap.append(rank, suit, trigger, popover);
 
   function openPopover(): void {
+    // Закрыть все остальные открытые попапы карт — одновременно открыт только один.
+    // (Триггер использует stopPropagation, поэтому document-click-handler не успевает
+    // закрыть предыдущий попап при открытии нового.)
+    document.querySelectorAll<HTMLElement>('.card-picker-popover').forEach((p) => {
+      if (p !== popover) p.hidden = true;
+    });
+
     pendingRank = rank.value || '';
     pendingSuit = suit.value || '';
     setActiveRank(pendingRank);
@@ -332,7 +350,9 @@ function readCardSelects(container: HTMLElement, idPrefix: string): Card[] {
   return cards;
 }
 
-/** Индексы слотов: 0–1 рука, 2–6 борд. Возвращает карту в слоте или null. */
+/** Индексы слотов: 0–1 рука, 2–6 борд. Возвращает карту в слоте или null.
+ *  Валидирует ранг и масть: невалидное значение (например, при программной установке
+ *  или copy-paste) трактуется как пустое, а не как мусорная карта. */
 function getSlotCard(slotIndex: number): Card | null {
   const idPrefix = slotIndex < 2 ? 'hole' : 'board';
   const i = slotIndex < 2 ? slotIndex : slotIndex - 2;
@@ -341,7 +361,10 @@ function getSlotCard(slotIndex: number): Card | null {
   if (!rankEl || !suitEl) return null;
   const r = rankEl.value;
   const s = suitEl.value;
-  return r && s ? ((r + s) as Card) : null;
+  if (!r || !s) return null;
+  // Явная валидация: ранг и масть должны быть из допустимого множества.
+  if (!RANKS.includes(r) || !SUITS.includes(s)) return null;
+  return (r + s) as Card;
 }
 
 /** Очистить слот (сбросить ранг и масть). */
@@ -597,8 +620,8 @@ export function initApp(): void {
         boardCards,
         position: parseInt((document.getElementById('position') as HTMLInputElement).value, 10) || 0,
         numPlayers: parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6,
-        potSize: parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0,
-        toCall: parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0,
+        potSize: parseAmount(document.getElementById('pot-size') as HTMLInputElement),
+        toCall: parseAmount(document.getElementById('to-call') as HTMLInputElement),
         handHidden: app!.getAttribute('data-hand-hidden') === 'true',
       });
     }, 300);
@@ -792,7 +815,7 @@ export function initApp(): void {
   // Очередь ожидающих резолвов: id → {resolve, params}. На error воркера
   // сливаем очередь через sync fallback, иначе UI зависнет навечно.
   type EquityParams = { holeCards: Card[]; board: Card[]; numOpponents: number; iterations: number };
-  const pendingEquity = new Map<number, { resolve: (r: { percent: number; low: number; high: number }) => void; params: EquityParams }>();
+  const pendingEquity = new Map<number, { resolve: (r: { percent: number; low: number; high: number; isStale: boolean }) => void; params: EquityParams }>();
 
   function disableEquityWorker(): void {
     if (equityWorkerDisabled) return;
@@ -802,12 +825,13 @@ export function initApp(): void {
       equityWorker = null;
     }
     // Слить ожидающие запросы через sync, чтобы updateResults не завис.
-    for (const [, entry] of pendingEquity) {
+    for (const [id, entry] of pendingEquity) {
       try {
-        entry.resolve(calcEquitySync(entry.params.holeCards, entry.params.board, entry.params.numOpponents, entry.params.iterations));
+        const r = calcEquitySync(entry.params.holeCards, entry.params.board, entry.params.numOpponents, entry.params.iterations);
+        entry.resolve({ ...r, isStale: id !== equityRequestId });
       } catch (e) {
         // На совсем крайний случай — резолвим нулями, чтобы UI не висел.
-        entry.resolve({ percent: 0, low: 0, high: 0 });
+        entry.resolve({ percent: 0, low: 0, high: 0, isStale: id !== equityRequestId });
       }
     }
     pendingEquity.clear();
@@ -832,7 +856,10 @@ export function initApp(): void {
   let equityRequestId = 0;
 
   /**
-   * Запрос эквити через Worker (async). Возвращает Promise с результатом.
+   * Запрос эквити через Worker (async). Возвращает Promise с результатом
+   * и флагом isStale — true, если к моменту ответа появился более новый запрос.
+   * Вызывающий код (updateResults) обязан проверить isStale перед записью DOM:
+   * устаревший результат отбрасывается, чтобы не перетирать актуальный.
    * Если Worker недоступен / сломан — синхронный fallback (блокирует UI, но работает).
    */
   function requestEquity(
@@ -840,20 +867,22 @@ export function initApp(): void {
     board: Card[],
     numOpponents: number,
     iterations: number,
-  ): Promise<{ percent: number; low: number; high: number }> {
-    // ID инкрементируем ВСЕГДА — даже для sync fallback — чтобы вызывающий код
-    // мог корректно отслеживать «свой» запрос через currentRequestId === equityRequestId.
+  ): Promise<{ percent: number; low: number; high: number; isStale: boolean }> {
     const id = ++equityRequestId;
+    // isStale=true, если после выдачи этого id был запрошен более новый расчёт.
+    const checkStale = () => id !== equityRequestId;
     if (!equityWorker || equityWorkerDisabled) {
       // Worker недоступен — синхронный расчёт (блокирует, но корректный).
-      return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
+      const r = calcEquitySync(holeCards, board, numOpponents, iterations);
+      return Promise.resolve({ ...r, isStale: checkStale() });
     }
     const params: EquityParams = { holeCards, board, numOpponents, iterations };
     try {
       equityWorker.postMessage({ id, holeCards, board, numOpponents, iterations });
     } catch {
       // Worker сломался прямо в момент postMessage — fallback на sync.
-      return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
+      const r = calcEquitySync(holeCards, board, numOpponents, iterations);
+      return Promise.resolve({ ...r, isStale: checkStale() });
     }
     return new Promise(resolve => {
       pendingEquity.set(id, { resolve, params });
@@ -862,7 +891,9 @@ export function initApp(): void {
         if (data.id === id) {
           equityWorker!.removeEventListener('message', onMessage);
           pendingEquity.delete(id);
-          resolve({ percent: data.percent, low: data.low, high: data.high });
+          // isStale проверяем в момент получения ответа от Worker — это и есть
+          // точка гонки: если пока Worker считал, пришёл новый запрос, результат устарел.
+          resolve({ percent: data.percent, low: data.low, high: data.high, isStale: checkStale() });
         }
       };
       equityWorker!.addEventListener('message', onMessage);
@@ -874,8 +905,8 @@ export function initApp(): void {
     const boardCards = readCardSelects(boardContainer, 'board');
     const numPlayers = clampNumPlayers(parseInt((document.getElementById('num-players') as HTMLInputElement).value, 10) || 6);
     const positionIndex = clampPositionIndex(parseInt(positionInput.value, 10) || 0, numPlayers);
-    const potSize = parseInt((document.getElementById('pot-size') as HTMLInputElement).value, 10) || 0;
-    const toCall = parseInt((document.getElementById('to-call') as HTMLInputElement).value, 10) || 0;
+    const potSize = parseAmount(document.getElementById('pot-size') as HTMLInputElement);
+    const toCall = parseAmount(document.getElementById('to-call') as HTMLInputElement);
 
     if (holeCards.length !== 2) {
       if (triggeredByUser) notificationWarning();
@@ -895,6 +926,10 @@ export function initApp(): void {
       return;
     }
 
+    // Defense-in-depth: removeDuplicateCards() на change-событиях уже убирает дубликаты,
+    // поэтому в нормальном flow этот guard недостижим. Оставлен как защита от регрессии
+    // (например, при прямом программном изменении селектов) —.hand-eval и equity
+    // упадут или дадут мусор, если пропустить одинаковую карту в руке и на борде.
     const allCards = [...holeCards, ...boardCards];
     if (new Set(allCards).size !== allCards.length) {
       if (triggeredByUser) notificationWarning();
@@ -926,10 +961,11 @@ export function initApp(): void {
       ? (board.length === 0 ? PREFLOP_ITERATIONS : POSTFLOP_ITERATIONS)
       : (board.length === 0 ? INTERACTIVE_PREFLOP_ITERATIONS : INTERACTIVE_POSTFLOP_ITERATIONS);
     // Расчёт эквити через Web Worker (async) — UI не блокируется.
-    const currentRequestId = equityRequestId + 1; // requestEquity инкрементирует
+    // requestEquity возвращает isStale: true, если пока Worker считал, появился
+    // более новый запрос. Устаревший результат отбрасываем ДО записи DOM,
+    // иначе гонка перезапишет актуальный результат устаревшим.
     const eqRange = await requestEquity(holeCards, board, numPlayers - 1, iterationsAllIn);
-    // Если пришёл новый запрос, пока этот считался — игнорируем устаревший результат.
-    if (currentRequestId !== equityRequestId) return;
+    if (eqRange.isStale) return;
     const nutsInfo = board.length === 5 ? compareToNuts(holeCards, board) : null;
     const phaseLabel = phase === 'preflop' ? 'Префлоп' : phase === 'flop' ? 'Флоп' : phase === 'turn' ? 'Терн' : 'Ривер';
     const advice = getAdvice({
@@ -1018,7 +1054,8 @@ export function initApp(): void {
         <details class="results-details">
           <summary>Эквити</summary>
           <div class="results-details-body">
-            <p>${eqRange.low}%–${eqRange.high}% против ${numPlayers - 1} оппонентов (~${eqRange.percent}%)</p>
+            <p>${eqRange.low}%–${eqRange.high}% — шанс лучшей руки против ${numPlayers - 1} оппонентов (~${eqRange.percent}% в среднем).</p>
+            <p class="results-hint">Семантика: вероятность, что ваша рука сильнее всех на шоудауне (P(best)), а не доля банка.</p>
           </div>
         </details>
       `;

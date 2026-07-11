@@ -14,6 +14,19 @@ if [ ! -f "$ANDROID_DIR/keystore.properties" ]; then
   exit 1
 fi
 
+# Проверка синхронизации версий: package.json vs AndroidManifest (build.gradle).
+# Отлавливает рассинхрон versionName/versionCode до релиза.
+PKG_VERSION=$(node -p "require('$APP_DIR/package.json').version")
+GRADLE_VERSION=$(grep 'versionName' "$ANDROID_DIR/app/build.gradle" | head -1 | sed 's/.*versionName *"\([^"]*\)".*/\1/')
+if [ "$PKG_VERSION" != "$GRADLE_VERSION" ]; then
+  echo "Ошибка: версии рассинхронизированы."
+  echo "  package.json: $PKG_VERSION"
+  echo "  build.gradle versionName: $GRADLE_VERSION"
+  echo "Обновите обе до одного значения перед релизом."
+  exit 1
+fi
+echo "Версия $PKG_VERSION — синхронизирована."
+
 echo "Сборка веб-приложения..."
 cd "$APP_DIR" && npm run build
 

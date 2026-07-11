@@ -74,6 +74,14 @@ describe('getAdvice', () => {
       const result = getAdvice(ctx);
       expect(result.reason).toContain('Банк не указан');
     });
+
+    it('при pot>0 и toCall=0 в причине НЕ говорит «Банк не указан» (банк задан)', () => {
+      // Регресс-тест на дефект №9: pot=100, toCall=0 — банк указан, просто нет ставки.
+      const ctx = baseContext({ potSize: 100, toCall: 0 });
+      const result = getAdvice(ctx);
+      expect(result.reason).not.toMatch(/Банк не указан/);
+      expect(result.reason).toMatch(/Нет ставки на колл|пот-оддсы не применимы/i);
+    });
   });
 
   describe('влияние позиции на совет', () => {
@@ -174,7 +182,7 @@ describe('getAdvice', () => {
       expect(result.action).toBe('fold');
     });
 
-    it('AA (премиум) → без имплайдов, рейз как раньше', () => {
+    it('AA (премиум) с toCall>0 → 3-бет (raise), не колл', () => {
       const ctx: TableContext = {
         phase: 'preflop',
         board: [],
@@ -185,8 +193,43 @@ describe('getAdvice', () => {
         positionIndex: 0,
       };
       const result = getAdvice(ctx);
-      expect(result.action).toBe('call'); // премиум с toCall>0 → call
+      expect(result.action).toBe('raise'); // премиум с toCall>0 → 3-бет
       expect(result.reason).not.toMatch(/имплайд|сет-майнинг/i);
+    });
+
+    it('AA без ставки (toCall=0) → raise для велью', () => {
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['Ah', 'Ad'],
+        potSize: 3,
+        toCall: 0,
+        numPlayers: 6,
+        positionIndex: 0,
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('raise');
+    });
+
+    it('KK в 4-бет поте (большой toCall) → raise (5-бет/all-in)', () => {
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['Kh', 'Kd'],
+        potSize: 1000,
+        toCall: 500,
+        numPlayers: 6,
+        positionIndex: 0,
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('raise');
+    });
+
+    it('QQ и JJ с toCall>0 → raise (3-бет)', () => {
+      const qq = getAdvice({ phase: 'preflop', board: [], holeCards: ['Qh', 'Qd'], potSize: 100, toCall: 50, numPlayers: 6, positionIndex: 0 });
+      const jj = getAdvice({ phase: 'preflop', board: [], holeCards: ['Jh', 'Jd'], potSize: 100, toCall: 50, numPlayers: 6, positionIndex: 0 });
+      expect(qq.action).toBe('raise');
+      expect(jj.action).toBe('raise');
     });
 
     it('сильное дро (9 аутов флеш) на флопе с margin чуть ниже pot-odds → CALL', () => {
@@ -220,6 +263,43 @@ describe('getAdvice', () => {
       };
       const result = getAdvice(ctx);
       expect(result.reason).not.toMatch(/имплайд|сет-майнинг|монстр/i);
+    });
+  });
+
+  describe('эквити непарных бродвей-рук vs много оппонентов', () => {
+    // Регрессионные тесты для дефекта №6. Расследование показало: equityPercent
+    // даёт ~23% для AKs vs 8 random — это КОРРЕКТНО (эталон Equilab 22-25%,
+    // AKo ~20.7%). Отчёт ошибочно заявлял «истинная equity 30-35%».
+    // Fold AKs на 3-бете (required 33%) с equity 23% — математически обоснован.
+
+    it('AKs vs 8 random (equity 23%) на 3-бете (required 33%) → FOLD — корректно', () => {
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['Ah', 'Kh'],
+        potSize: 100,
+        toCall: 50,
+        numPlayers: 9,
+        positionIndex: 0, // BTN — поздняя
+        equityPercent: 23, // реальное значение equityPercent для AKs vs 8 random
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).toBe('fold');
+    });
+
+    it('AKs vs 1 random (equity 68%) на 3-бете → не fold (heads-up эквити высокая)', () => {
+      const ctx: TableContext = {
+        phase: 'preflop',
+        board: [],
+        holeCards: ['Ah', 'Kh'],
+        potSize: 100,
+        toCall: 50,
+        numPlayers: 2,
+        positionIndex: 0,
+        equityPercent: 68,
+      };
+      const result = getAdvice(ctx);
+      expect(result.action).not.toBe('fold');
     });
   });
 });

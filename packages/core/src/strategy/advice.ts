@@ -149,12 +149,15 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     };
   }
 
-  // Префлоп: только премиум-пары (AA, KK, QQ, JJ) — по гайдам почти всегда играем
+  // Префлоп: только премиум-пары (AA, KK, QQ, JJ) — по гайдам почти всегда играем.
+  // С открытой ставкой (toCall > 0) переставляем для велью (3-бет); без ставки — рейз.
   if (phase === 'preflop' && isPremiumPocketPair(holeCards)) {
     return {
-      action: toCall > 0 ? 'call' : 'raise',
+      action: 'raise',
       confidence: CONFIDENCE.premiumPreflop,
-      reason: 'Премиум-пара на префлопе (AA–JJ) — рейз или колл для значения.',
+      reason: toCall > 0
+        ? 'Премиум-пара на префлопе (AA–JJ) против ставки — 3-бет для велью.'
+        : 'Премиум-пара на префлопе (AA–JJ) — рейз для велью.',
     };
   }
 
@@ -233,20 +236,25 @@ export function getAdvice(ctx: TableContext): AdviceResult {
     };
   }
 
-  // Банк 0: пот-оддсы не считаем — совет только по эквити/силе руки (поздняя позиция — чуть мягче)
+  // Пот-оддсы недоступны (pot=0 или toCall=0): совет только по эквити/силе руки.
+  // Различаем причину: «нет банка» (pot=0) vs «нет ставки на колл» (toCall=0) —
+  // раньше текст всегда говорил «Банк не указан», что вводило в заблуждение при toCall=0.
   if (!hasPotOdds) {
     const minEqForCall = latePos ? MIN_EQ_NO_POTODDS_LATE_PCT : MIN_EQ_NO_POTODDS_EARLY_PCT;
+    const noOddsReason = potSize > 0 && toCall === 0
+      ? 'Нет ставки на колл — пот-оддсы не применимы.'
+      : 'Банк не указан — учёт пот-оддсов недоступен.';
     if (eq >= STRONG_EQ_NO_POTODDS_PCT) {
       return {
         action: 'call',
         confidence: latePos ? CONFIDENCE.callNoPotOddsStrongLate : CONFIDENCE.callNoPotOddsStrong,
-        reason: `Банк не указан — учёт пот-оддсов недоступен. Эквити ~${eq}%, по силе руки колл допустим.${latePos ? ' Позиция позволяет.' : ''}`,
+        reason: `${noOddsReason} Эквити ~${eq}%, по силе руки колл допустим.${latePos ? ' Позиция позволяет.' : ''}`,
       };
     }
     return {
       action: eq >= minEqForCall ? 'call' : 'fold',
       confidence: CONFIDENCE.callNoPotOddsWeak,
-      reason: `Банк не указан — укажите банк для совета по коллу. Эквити ~${eq}%.${latePos && eq >= minEqForCall ? ' В поздней позиции колл допустим.' : ''}`,
+      reason: `${noOddsReason} Эквити ~${eq}%.${latePos && eq >= minEqForCall ? ' В поздней позиции колл допустим.' : ''}`,
     };
   }
 
