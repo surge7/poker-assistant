@@ -780,15 +780,52 @@ export function initApp(): void {
 
   // Web Worker для расчёта эквити — UI не блокируется при тяжёлом Монте-Карло.
   // Fallback на синхронный расчёт (calcEquitySync), если Worker недоступен:
-  // portable-режим (IIFE), Android WebView (Worker не загрузился), старые браузеры.
+  // portable-режим (IIFE, скрипт воркера не встроен в HTML), Android WebView
+  // (Worker не загрузился), старые браузеры.
+  //
+  // Важно: new Worker(url) НЕ бросает синхронно, если URL существующий, но
+  // скрипт не загружается (404, file:// без CORS, и т.п.) — Worker создаётся,
+  // но onerror срабатывает асинхронно. Поэтому ловим и error-событие.
   let equityWorker: Worker | null = null;
+  let equityWorkerDisabled = false; // воркер сломан (error event) — больше не пытаемся
+
+  // Очередь ожидающих резолвов: id → {resolve, params}. На error воркера
+  // сливаем очередь через sync fallback, иначе UI зависнет навечно.
+  type EquityParams = { holeCards: Card[]; board: Card[]; numOpponents: number; iterations: number };
+  const pendingEquity = new Map<number, { resolve: (r: { percent: number; low: number; high: number }) => void; params: EquityParams }>();
+
+  function disableEquityWorker(): void {
+    if (equityWorkerDisabled) return;
+    equityWorkerDisabled = true;
+    if (equityWorker) {
+      try { equityWorker.terminate(); } catch { /* noop */ }
+      equityWorker = null;
+    }
+    // Слить ожидающие запросы через sync, чтобы updateResults не завис.
+    for (const [, entry] of pendingEquity) {
+      try {
+        entry.resolve(calcEquitySync(entry.params.holeCards, entry.params.board, entry.params.numOpponents, entry.params.iterations));
+      } catch (e) {
+        // На совсем крайний случай — резолвим нулями, чтобы UI не висел.
+        entry.resolve({ percent: 0, low: 0, high: 0 });
+      }
+    }
+    pendingEquity.clear();
+  }
+
   try {
     // type: 'module' — Vite собирает equity-worker.ts в отдельный ES-модуль chunk.
     // В Android WebView (Capacitor, androidScheme: 'https') Worker грузится по
     // относительному URL через import.meta.url — обычно работает, но проверяем try/catch.
+    // В single-HTML сборке (build:single-html) equity-worker.js НЕ встраивается,
+    // URL резолвится в несуществующий путь → onerror срабатывает асинхронно.
     equityWorker = new Worker(new URL('./equity-worker.ts', import.meta.url), { type: 'module' });
+    equityWorker.addEventListener('error', disableEquityWorker);
+    // messageerror — воркер ответил, но данные нечитаемы. Тоже fallback.
+    equityWorker.addEventListener('messageerror', disableEquityWorker);
   } catch {
-    equityWorker = null; // fallback на синхронный расчёт
+    // Синхронная ошибка конструктора (например, нет поддержки Worker).
+    disableEquityWorker();
   }
 
   // Монотонный ID запросов — для отмены устаревших результатов.
@@ -796,7 +833,7 @@ export function initApp(): void {
 
   /**
    * Запрос эквити через Worker (async). Возвращает Promise с результатом.
-   * Если Worker недоступен — синхронный fallback (блокирует UI, но работает).
+   * Если Worker недоступен / сломан — синхронный fallback (блокирует UI, но работает).
    */
   function requestEquity(
     holeCards: Card[],
@@ -804,26 +841,31 @@ export function initApp(): void {
     numOpponents: number,
     iterations: number,
   ): Promise<{ percent: number; low: number; high: number }> {
-    if (!equityWorker) {
+    // ID инкрементируем ВСЕГДА — даже для sync fallback — чтобы вызывающий код
+    // мог корректно отслеживать «свой» запрос через currentRequestId === equityRequestId.
+    const id = ++equityRequestId;
+    if (!equityWorker || equityWorkerDisabled) {
       // Worker недоступен — синхронный расчёт (блокирует, но корректный).
       return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
     }
-    const id = ++equityRequestId;
+    const params: EquityParams = { holeCards, board, numOpponents, iterations };
     try {
       equityWorker.postMessage({ id, holeCards, board, numOpponents, iterations });
     } catch {
-      // Worker сломался в runtime — fallback на sync.
+      // Worker сломался прямо в момент postMessage — fallback на sync.
       return Promise.resolve(calcEquitySync(holeCards, board, numOpponents, iterations));
     }
     return new Promise(resolve => {
-      const handler = (e: MessageEvent) => {
+      pendingEquity.set(id, { resolve, params });
+      const onMessage = (e: MessageEvent) => {
         const data = e.data as { id: number; percent: number; low: number; high: number };
         if (data.id === id) {
-          equityWorker!.removeEventListener('message', handler);
+          equityWorker!.removeEventListener('message', onMessage);
+          pendingEquity.delete(id);
           resolve({ percent: data.percent, low: data.low, high: data.high });
         }
       };
-      equityWorker!.addEventListener('message', handler);
+      equityWorker!.addEventListener('message', onMessage);
     });
   }
 
