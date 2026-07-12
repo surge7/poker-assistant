@@ -66,3 +66,50 @@ describe('эквити против диапазонов оппонентов (V
     expect(a).toBe(b); // детерминизм сохранён
   });
 });
+
+describe('доля банка при chop (multiway tie)', () => {
+  // Регрессия на дефект #14: формула tie/2 переоценивала долю банка в multiway chop.
+  // Правильная семантика equity — ожидаемая доля пота: при chop с N игроками наша доля = 1/(N+1).
+
+  it('royal flush на борде vs 1 → 50% (heads-up chop, 1/2)', () => {
+    const board: Card[] = ['Th', 'Jh', 'Qh', 'Kh', 'Ah'];
+    expect(equityPercent(['2c', '3d'], board, 1, 5000)).toBe(50);
+  });
+
+  it('royal flush на борде vs 5 → ~17% (5-way chop, 1/6)', () => {
+    // Раньше: 50% (tie/2). Теперь: 1/6 ≈ 17%.
+    const board: Card[] = ['Th', 'Jh', 'Qh', 'Kh', 'Ah'];
+    const eq = equityPercent(['2c', '3d'], board, 5, 5000);
+    expect(eq).toBeGreaterThanOrEqual(15);
+    expect(eq).toBeLessThanOrEqual(19);
+  });
+
+  it('royal flush на борде: доля уменьшается с числом оппонентов', () => {
+    const board: Card[] = ['Th', 'Jh', 'Qh', 'Kh', 'Ah'];
+    const e1 = equityPercent(['2c', '3d'], board, 1, 5000);
+    const e3 = equityPercent(['2c', '3d'], board, 3, 5000);
+    const e8 = equityPercent(['2c', '3d'], board, 8, 5000);
+    expect(e1).toBeGreaterThan(e3);
+    expect(e3).toBeGreaterThan(e8);
+  });
+
+  it('нормальные руки (без chop) не зависят от новой формулы — AA vs 8 ≈ 34%', () => {
+    // Регрессия: фикс chop не должен сломать обычные сценарии (tie ≈ 0).
+    const eq = equityPercent(['Ah', 'Ad'], [], 8, 5000);
+    expect(eq).toBeGreaterThanOrEqual(31);
+    expect(eq).toBeLessThanOrEqual(37);
+  });
+
+  it('AKs vs 1 (heads-up) — tie/2 формула сохранена, ≈ 67%', () => {
+    const eq = equityPercent(['Ah', 'Kh'], [], 1, 5000);
+    expect(eq).toBeGreaterThanOrEqual(63);
+    expect(eq).toBeLessThanOrEqual(71);
+  });
+
+  it('натс-флеш на ривере vs 5 → ~99% (почти всегда чистая победа)', () => {
+    // Регрессия: nut flush почти не chop'ится — equity должна быть высокой.
+    const board: Card[] = ['9h', '7h', '3h', '2h', '5h'];
+    const eq = equityPercent(['Ah', 'Kh'], board, 5, 5000);
+    expect(eq).toBeGreaterThanOrEqual(95);
+  });
+});

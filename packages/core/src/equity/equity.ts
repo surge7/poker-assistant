@@ -133,9 +133,9 @@ export function equity(
   numOpponents: number = 1,
   iterations: number = DEFAULT_ITERATIONS,
   opponents?: Opponent[],
-): { win: number; tie: number; lose: number; total: number } {
+): { win: number; tie: number; lose: number; total: number; equity: number } {
   if (holeCards.length !== 2) {
-    return { win: 0, tie: 0, lose: 1, total: 0 };
+    return { win: 0, tie: 0, lose: 1, total: 0, equity: 0 };
   }
 
   const deck = createDeck();
@@ -150,8 +150,13 @@ export function equity(
   let wins = 0;
   let ties = 0;
   let losses = 0;
+  // Аккумулятор долей банка (pot share): чистая победа → +1, chop → +1/tiedCount,
+  // проигрыш → +0. equityPercent использует equitySum для корректного multiway-расчёта:
+  // старая формула tie/2 правильно работала только heads-up, в multiway переоценивала
+  // долю (например, royal на борде vs 5 → 50% вместо 1/6 ≈ 17%).
+  let equitySum = 0;
 
-  // Предвычислить комбинации диапазонов оппонентов один раз (кеш).
+  // Предвычисить комбинации диапазонов оппонентов один раз (кеш).
   // Пустой массив = случайная рука из pool (fallback).
   const oppCombos: Card[][][] = [];
   for (let o = 0; o < numOpponents; o++) {
@@ -163,6 +168,10 @@ export function equity(
       oppCombos.push([]); // пустой = случайная рука (как раньше)
     }
   }
+
+  // Буфер рук оппонентов для текущей итерации — нужен для подсчёта chop-игроков
+  // (сколько оппонентов делят с нами лучшую руку). Переиспользуем между итерациями.
+  const oppHands: ReturnType<typeof evaluatePlayerHand>[] = new Array(numOpponents);
 
   for (let i = 0; i < iterations; i++) {
     fillRemaining(deck, deadSet, remaining);
@@ -177,15 +186,29 @@ export function equity(
     const ourHand = evaluatePlayerHand(holeCards, newBoard);
 
     let bestOpp = evaluatePlayerHand(dealOpponent(oppCombos[0], remaining, random, usedInDeal), newBoard);
+    oppHands[0] = bestOpp;
     for (let o = 1; o < numOpponents; o++) {
       const oppHand = evaluatePlayerHand(dealOpponent(oppCombos[o], remaining, random, usedInDeal), newBoard);
+      oppHands[o] = oppHand;
       if (compareHands(oppHand, bestOpp) > 0) bestOpp = oppHand;
     }
 
     const cmp = compareHands(ourHand, bestOpp);
-    if (cmp > 0) wins++;
-    else if (cmp === 0) ties++;
-    else losses++;
+    if (cmp > 0) {
+      wins++;
+      equitySum += 1; // чистая победа — весь банк наш
+    } else if (cmp === 0) {
+      // Chop: наша доля = 1 / (число игроков на победном сплите).
+      // Считаем оппонентов, равных bestOpp, плюс мы сами (1).
+      let tiedCount = 1;
+      for (let o = 0; o < numOpponents; o++) {
+        if (compareHands(oppHands[o], bestOpp) === 0) tiedCount++;
+      }
+      ties++;
+      equitySum += 1 / tiedCount;
+    } else {
+      losses++;
+    }
   }
 
   const total = wins + ties + losses;
@@ -194,10 +217,13 @@ export function equity(
     tie: total > 0 ? ties / total : 0,
     lose: total > 0 ? losses / total : 0,
     total,
+    // Ожидаемая доля банка с учётом chop: чистые победы (1) + доли на chop (1/tiedCount).
+    // Отличается от win + tie/2 в multiway: при 5-way chop даёт 1/6, а не 1/2.
+    equity: total > 0 ? equitySum / total : 0,
   };
 }
 
-/** Эквити в процентах (win%) для отображения */
+/** Эквити в процентах (ожидаемая доля банка) для отображения */
 export function equityPercent(
   holeCards: Card[],
   board: Card[],
@@ -206,7 +232,7 @@ export function equityPercent(
   opponents?: Opponent[],
 ): number {
   const e = equity(holeCards, board, numOpponents, iterations, opponents);
-  return Math.round((e.win + e.tie / 2) * 100);
+  return Math.round(e.equity * 100);
 }
 
 /** Эквити в процентах и диапазон (нижняя — верхняя граница, ~95% доверительный интервал) */
@@ -219,7 +245,7 @@ export function equityPercentRange(
 ): { percent: number; low: number; high: number } {
   const e = equity(holeCards, board, numOpponents, iterations, opponents);
   const total = e.total;
-  const p = e.win + e.tie / 2;
+  const p = e.equity;
   const percent = Math.round(p * 100);
   if (total <= 0) return { percent: 0, low: 0, high: 0 };
   const se = Math.sqrt((p * (1 - p)) / total);
