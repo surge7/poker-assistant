@@ -19,6 +19,7 @@ import {
 import { impactLight, impactMedium, selectionChanged, notificationWarning, notificationSuccess } from './haptics';
 import { calcEquitySync } from './equity-fallback';
 import { cardToHtml, setPreviewCardImage, setTriggerCardImage } from './cards';
+import { handRankingsButtonIcon, openHandRankingsPanel } from './hand-rankings-ui';
 import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -432,6 +433,9 @@ export function initApp(): void {
         <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
           <p>Это тренажёр Texas Hold'em. Введите свои карты и борд, выберите позицию, укажите банк и сумму колла — и нажмите «Рассчитать». Вы получите совет, эквити и подсказки по аутам.</p>
         </div>
+        <button type="button" class="rankings-trigger btn-ripple" id="rankings-trigger" aria-label="Комбинации" title="Комбинации">
+          ${handRankingsButtonIcon()}
+        </button>
         <button type="button" class="theme-toggle btn-ripple" id="theme-toggle" aria-label="Светлая/тёмная тема" title="Светлая/тёмная тема">
           <span class="theme-icon theme-icon-sun" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
           <span class="theme-icon theme-icon-moon" aria-hidden="true" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
@@ -519,6 +523,10 @@ export function initApp(): void {
   buildCardSelects(holeContainer, 2, 'hole', ['Первая карта', 'Вторая карта']);
   buildBoardCardSelects(boardContainer);
   attachDuplicateCheck();
+
+  document.getElementById('rankings-trigger')?.addEventListener('click', () => {
+    openHandRankingsPanel();
+  });
 
   const positionInput = document.getElementById('position') as HTMLInputElement;
   const positionChipsRow = document.getElementById('position-chips-row')!;

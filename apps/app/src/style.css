@@ -1,5 +1,6 @@
 @import url('./styles/tokens.css');
 @import url('./styles/animations.css');
+@import url('./styles/hand-rankings.css');
 
 /* ============================================================
    Legacy variable aliases → design tokens (tokens.css).
@@ -1459,6 +1460,7 @@ body {
   }
 
   .title-help-trigger,
+  .rankings-trigger,
   .position-help-trigger {
     min-width: 2rem;
     min-height: 2rem;
