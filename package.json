@@ -10,7 +10,9 @@
     "build:core": "npm run build -w @poker/core",
     "build:app": "npm run build -w app",
     "dev": "npm run dev -w app",
-    "dev:web": "npm run dev -w app"
+    "dev:web": "npm run dev -w app",
+    "build:android": "bash build-android.sh",
+    "upload:android": "bash scripts/upload-yadisk.sh apps/app/app-debug.apk"
   },
   "devDependencies": {
     "typescript": "^5.3.0"

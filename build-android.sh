@@ -22,3 +22,16 @@ APK_DST="$APP_DIR/app-debug.apk"
 cp "$APK_SRC" "$APK_DST"
 echo ""
 echo "Готово. APK скопирован: $APK_DST"
+
+# --- авто-заливка на Яндекс.Диск (если настроено) ------------------------
+if [[ -f "$ROOT/.env.yandex" ]]; then
+  echo ""
+  echo "Заливаю APK на Яндекс.Диск..."
+  if ! bash "$ROOT/scripts/upload-yadisk.sh" "$APK_DST"; then
+    echo "⚠ Заливка на Яндекс.Диск не удалась (см. выше). Локальный APK на месте." >&2
+  fi
+else
+  echo ""
+  echo "(.env.yandex не найден — заливка на Яндекс.Диск пропущена."
+echo "  Чтобы включить: cp .env.yandex.example .env.yandex, заполни токен и YADISK_FOLDER.)"
+fi
