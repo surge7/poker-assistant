@@ -71,22 +71,25 @@ echo "    Из:    $APK_SRC ($APK_SIZE_MB MiB)"
 echo "    В:     $DEST_PATH"
 
 # --- 1. создать папку назначения (идемпотентно) ----------------------------
-# YADISK_FOLDER хранится без префикса app:/. Перед запросом добавляем.
-PARENT_DIR="app:/${YADISK_FOLDER#/}"
-PARENT_DIR="${PARENT_DIR%/}"
-
-mkdir_response="$(curl -sS -X PUT \
-  -H "Authorization: OAuth $YADISK_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"path":"'"$PARENT_DIR"'"}' \
-  "https://cloud-api.yandex.net/v1/disk/resources?path=$(printf '%s' "$PARENT_DIR" | jq -sRr @uri)")"
-
-mkdir_code="$(printf '%s' "$mkdir_response" | jq -r '.error // "ok"' 2>/dev/null || echo "ok")"
-# 409 = "already exists" — это норм.
-case "$mkdir_code" in
-  ok|"") echo "    ✓ Папка готова: $PARENT_DIR" ;;
-  *) echo "    ⚠ Создание папки: $mkdir_code (продолжаю)" ;;
-esac
+# Yandex API не создаёт промежуточные директории — идём по уровням.
+IFS='/' read -r -a PARTS <<<"${YADISK_FOLDER#/}"
+ACC="app:/"
+for part in "${PARTS[@]}"; do
+  [[ -z "$part" ]] && continue
+  ACC="${ACC%/}/$part"
+  resp="$(curl -sS -X PUT \
+    -H "Authorization: OAuth $YADISK_TOKEN" \
+    "https://cloud-api.yandex.net/v1/disk/resources?path=$(printf '%s' "$ACC" | jq -sRr @uri)")"
+  err="$(printf '%s' "$resp" | jq -r '.error // empty' 2>/dev/null)"
+  # 409 DiskPathPointsToExistentDirectoryError — ок, уже есть.
+  if [[ -z "$err" || "$err" == *"DiskPathPointsToExistentDirectoryError"* ]]; then
+    :
+  else
+    echo "    ⚠ Создание $ACC: $err (продолжаю)"
+  fi
+done
+PARENT_DIR="$ACC"
+echo "    ✓ Папка готова: $PARENT_DIR"
 
 # --- 2. получить URL для загрузки ------------------------------------------
 upload_meta="$(curl -sS -X GET \
