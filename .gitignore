@@ -46,3 +46,9 @@ apps/app/poker-assistant.html
 /tmp/*.png
 /review-*.png
 test-results/
+
+# Git worktrees (параллельные рабочие деревья)
+.worktrees/
+
+# Отладочные сессии тестирования (скрипты, отчёты)
+test-sessions/
