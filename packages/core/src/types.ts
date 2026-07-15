@@ -84,9 +84,40 @@ export interface OutsResult {
   outCards?: Card[];
 }
 
+/** Структурированные числа и флаги для блока «Почему так?» в UI. */
+export interface AdviceExplanation {
+  equityPct: number;
+  equityLow?: number;
+  equityHigh?: number;
+  /** Минимальное эквити по сырым пот-оддсам (колл ÷ (банк + колл)), %. */
+  requiredPct?: number;
+  /** Порог с учётом имплайд-оддсов, если применены. */
+  effectiveRequiredPct?: number;
+  /** Запас или дефицит: equityPct − effectiveRequiredPct, п.п. */
+  marginPct?: number;
+  /** Доля колла в общем банке после колла (0..1). */
+  potOdds?: number;
+  potSize?: number;
+  toCall?: number;
+  outs?: number;
+  /** Вероятность улучшения на следующей улице, %. */
+  improveChancePct?: number;
+  /** Множитель порога (< 1, если имплайды снижают требуемое эквити). */
+  impliedOdds?: number;
+  impliedReason?: string;
+  isMarginal?: boolean;
+  /** Банк не задан — расчёт пот-оддсов невозможен. */
+  potOddsUnavailable?: boolean;
+}
+
 /** Результат совета */
 export interface AdviceResult {
   action: 'fold' | 'check' | 'call' | 'raise' | 'all-in';
-  confidence: number; // 0..1
+  confidence: number; // 0..1 — надёжность совета по текущим данным (в UI не «уверенность»)
+  /** Главная мысль — одна строка. */
   reason: string;
+  /** Факты и уточнения для структурированного вывода в UI. */
+  details?: string[];
+  /** Числовая расшифровка решения для раскрывающегося блока в UI. */
+  explanation?: AdviceExplanation;
 }
