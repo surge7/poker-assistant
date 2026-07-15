@@ -7,7 +7,7 @@
 
 import type { AdviceExplanation, AdviceResult, Card, HandStrength, OutsResult } from '@poker/core';
 import { cardToHtml } from './cards';
-import { ui, t, type ActionLabels } from './i18n';
+import { ui, t } from './i18n';
 import {
   actionClass,
   actionLabel,

@@ -24,13 +24,11 @@ import {
   INTERACTIVE_POSTFLOP_ITERATIONS,
   clampNumPlayers,
   clampPositionIndex,
-  type Card,
 } from '@poker/core';
 import { impactLight, impactMedium, notificationWarning, notificationSuccess, selectionChanged } from './haptics';
 import { EquityClient } from './equity-client';
 import { handRankingsButtonIcon, openHandRankingsPanel } from './hand-rankings-ui';
-import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
-import { ui } from './i18n';
+import { loadState, clearState, getDefaultState } from './state';
 import {
   buildCardSelects,
   buildBoardCardSelects,
@@ -39,8 +37,6 @@ import {
 } from './picker';
 import { applyState, applyHandHidden, updatePositionUI, createDebouncedSave, parseAmount } from './state-ui';
 import { renderEmptyState, renderErrorState, renderResults, type EquityRange } from './render';
-
-const SUIT_SYMBOLS: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
 
 /** Преобразовать board.length → phase для getAdvice. */
 function getPhase(boardLength: number): 'preflop' | 'flop' | 'turn' | 'river' {
@@ -375,7 +371,9 @@ export function initApp(): void {
 
     const strength = evaluatePlayerHand(holeCards, board);
     const outsList = board.length >= 3 && board.length < 5 ? countOuts(holeCards, board) : [];
-    const { total: totalOutsCount, improveChance } = board.length >= 3 && board.length < 5 ? totalOuts(holeCards, board) : { total: 0, improveChance: 0 };
+    const totalOutsCount = board.length >= 3 && board.length < 5
+      ? totalOuts(holeCards, board).total
+      : 0;
 
     // Полные итерации при ручном расчёте, уменьшенные при автопересчёте.
     const iterationsAllIn = triggeredByUser

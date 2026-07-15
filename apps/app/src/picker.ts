@@ -316,7 +316,7 @@ export function buildBoardCardSelects(container: HTMLElement): void {
 }
 
 /** Прочитать выбранные карты из idPrefix-слотов. */
-export function readCardSelects(container: HTMLElement, idPrefix: string): Card[] {
+export function readCardSelects(_container: HTMLElement, idPrefix: string): Card[] {
   const cards: Card[] = [];
   let i = 0;
   while (true) {

@@ -87,7 +87,7 @@ export class EquityClient {
           resolve({ percent: data.percent, low: data.low, high: data.high, isStale: checkStale() });
         }
       };
-      this.worker.addEventListener('message', onMessage);
+      this.worker!.addEventListener('message', onMessage);
     });
   }
 }

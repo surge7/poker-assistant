@@ -28,7 +28,9 @@ function suitSymbol(suit: string): string {
 export function cardImageUrl(card: Card): string {
   const embedded = typeof window !== 'undefined' ? window.__PA_CARDS__?.[card] : undefined;
   if (embedded) return embedded;
-  const base = import.meta.env.BASE_URL;
+  // Vite подменяет import.meta.env на этапе build; для tsc --noEmit тип
+  // недоступен без vite/client types. Используем typecast.
+  const base = (import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '';
   return `${base}cards/${card}.webp`;
 }
 
