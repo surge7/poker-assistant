@@ -1,11 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { getAdvice } from './advice';
-import type { TableContext } from '../types';
+import type { TableContext, AdviceResult, AdviceExplanation } from '../types';
 import type { Opponent } from '../players/profiles';
+
+function adviceText(result: AdviceResult): string {
+  return [result.reason, ...(result.details ?? [])].join(' ');
+}
+
+function expectPotOdds(explanation: AdviceExplanation | undefined, potSize: number, toCall: number): void {
+  expect(explanation).toBeDefined();
+  const requiredPct = (toCall / (potSize + toCall)) * 100;
+  expect(explanation!.requiredPct).toBeCloseTo(requiredPct, 0);
+  expect(explanation!.potOdds).toBeCloseTo(toCall / (potSize + toCall), 2);
+  expect(explanation!.potSize).toBe(potSize);
+  expect(explanation!.toCall).toBe(toCall);
+}
 
 /** Базовый контекст: одна и та же рука и борд, меняем банк, toCall, позицию. */
 function baseContext(
-  overrides: Partial<Pick<TableContext, 'potSize' | 'toCall' | 'positionIndex'>> = {}
+  overrides: Partial<
+    Pick<TableContext, 'potSize' | 'toCall' | 'positionIndex' | 'equityPercent' | 'equityLow' | 'equityHigh'>
+  > = {},
 ): TableContext {
   return {
     phase: 'flop',
@@ -25,7 +40,7 @@ describe('getAdvice', () => {
       const ctx = baseContext({ potSize: 100, toCall: 0 });
       const result = getAdvice(ctx);
       expect(result.action).toBe('check');
-      expect(result.reason).toContain('Нет ставки на колл');
+      expect(result.reason).toContain('Нет ставки для колл');
     });
 
     it('при большом банке относительно ставки совет чаще колл (низкая требуемая эквити)', () => {
@@ -33,7 +48,8 @@ describe('getAdvice', () => {
       const ctxBigPot = baseContext({ potSize: 1000, toCall: 10 });
       const resultBigPot = getAdvice(ctxBigPot);
       expect(['call', 'raise']).toContain(resultBigPot.action);
-      expect(resultBigPot.reason).toMatch(/\d+%|требуемых|нужно/);
+      expect(resultBigPot.explanation?.requiredPct).toBeLessThan(5);
+      expectPotOdds(resultBigPot.explanation, 1000, 10);
     });
 
     it('при большой ставке относительно банка совет чаще фолд (высокая требуемая эквити)', () => {
@@ -41,7 +57,8 @@ describe('getAdvice', () => {
       const ctxSmallPot = baseContext({ potSize: 10, toCall: 100 });
       const resultSmallPot = getAdvice(ctxSmallPot);
       expect(resultSmallPot.action).toBe('fold');
-      expect(resultSmallPot.reason).toMatch(/требуемых|банк\/ставка|фолд/i);
+      expect(resultSmallPot.explanation?.requiredPct).toBeGreaterThan(80);
+      expect(resultSmallPot.explanation?.marginPct).toBeLessThan(0);
     });
 
     it('одна и та же рука: большой банк → колл, маленький банк при большой ставке → фолд', () => {
@@ -59,7 +76,8 @@ describe('getAdvice', () => {
     it('в причине совета при toCall > 0 фигурирует требуемая эквити (учёт банка/ставки)', () => {
       const ctx = baseContext({ potSize: 100, toCall: 50 });
       const result = getAdvice(ctx);
-      expect(result.reason).toMatch(/требуемых|нужно ~\d+%|\d+% при требуемых|банк\/ставка/);
+      expectPotOdds(result.explanation, 100, 50);
+      expect(result.explanation?.equityPct).toBeDefined();
     });
 
     it('при банке 0 и toCall > 0 не советует fold из-за «требуемая эквити 100%»', () => {
@@ -72,7 +90,9 @@ describe('getAdvice', () => {
     it('при банке 0 и toCall > 0 в причине указывается, что банк не задан (без пот-оддсов)', () => {
       const ctx = baseContext({ potSize: 0, toCall: 50 });
       const result = getAdvice(ctx);
-      expect(result.reason).toContain('Банк не указан');
+      expect(adviceText(result)).toContain('Банк не указан');
+      expect(result.explanation?.potOddsUnavailable).toBe(true);
+      expect(result.explanation?.requiredPct).toBeUndefined();
     });
 
     it('при pot>0 и toCall=0 в причине НЕ говорит «Банк не указан» (банк задан)', () => {
@@ -80,7 +100,7 @@ describe('getAdvice', () => {
       const ctx = baseContext({ potSize: 100, toCall: 0 });
       const result = getAdvice(ctx);
       expect(result.reason).not.toMatch(/Банк не указан/);
-      expect(result.reason).toMatch(/Нет ставки на колл|пот-оддсы не применимы/i);
+      expect(result.reason).toMatch(/Нет ставки для колл|чек/i);
     });
   });
 
@@ -94,15 +114,13 @@ describe('getAdvice', () => {
     });
 
     it('при маргинальной руке поздняя позиция может дать call, ранняя — fold', () => {
-      // Рука с эквити чуть ниже требуемой: в поздней позиции допускаем margin >= -5, в ранней >= 0
       const ctx = { ...baseContext({ potSize: 100, toCall: 40 }), numPlayers: 6 };
       const late = getAdvice({ ...ctx, positionIndex: 0 });
       const early = getAdvice({ ...ctx, positionIndex: 3 });
-      // При 6 игроках: 0 = BTN (поздняя), 3 = UTG (ранняя). Одна и та же рука — разница только в пороге колла
       const sameAction = late.action === early.action;
-      const lateMentionsPos = late.reason.includes('поздн') || late.reason.includes('Позиция');
-      const earlyMentionsPos = early.reason.includes('поздн') || early.reason.includes('Позиция');
-      expect(sameAction || lateMentionsPos || earlyMentionsPos || late.confidence !== early.confidence).toBe(true);
+      expect(sameAction || late.confidence !== early.confidence || late.action !== early.action).toBe(true);
+      expect(adviceText(late)).not.toMatch(/поздн/i);
+      expect(adviceText(early)).not.toMatch(/поздн/i);
     });
   });
 
@@ -164,7 +182,8 @@ describe('getAdvice', () => {
       };
       const result = getAdvice(ctx);
       expect(result.action).toBe('call');
-      expect(result.reason).toMatch(/сет-майнинг|имплайд/i);
+      expect(result.explanation?.impliedReason).toBe('сет-майнинг');
+      expect(result.explanation?.impliedOdds).toBeLessThan(1);
     });
 
     it('карманка 77 в ранней позиции (UTG индекс 3) → FOLD (позиция строже)', () => {
@@ -262,7 +281,9 @@ describe('getAdvice', () => {
         positionIndex: 0,
       };
       const result = getAdvice(ctx);
-      expect(result.reason).not.toMatch(/имплайд|сет-майнинг|монстр/i);
+      expect(result.reason).not.toMatch(/имплайд|сет-майнинг/i);
+      expect(result.explanation?.impliedOdds).toBeUndefined();
+      expect(result.explanation?.impliedReason).toBeUndefined();
     });
   });
 
@@ -304,6 +325,139 @@ describe('getAdvice', () => {
   });
 });
 
+describe('структурированное explanation', () => {
+  it('слабая рука на префлопе → fold с эквити и порогом в explanation', () => {
+    const ctx: TableContext = {
+      phase: 'preflop',
+      board: [],
+      holeCards: ['2h', '7d'],
+      potSize: 100,
+      toCall: 50,
+      numPlayers: 6,
+      positionIndex: 3,
+      equityPercent: 18,
+    };
+    const result = getAdvice(ctx);
+    expect(result.action).toBe('fold');
+    expect(result.explanation?.equityPct).toBe(18);
+    expectPotOdds(result.explanation, 100, 50);
+    expect(result.explanation?.marginPct).toBeLessThan(0);
+  });
+
+  it('большой банк → call с низким requiredPct', () => {
+    const ctx = baseContext({ potSize: 1000, toCall: 10, equityPercent: 55 });
+    const result = getAdvice(ctx);
+    expect(['call', 'raise']).toContain(result.action);
+    expect(result.explanation?.requiredPct).toBeLessThan(2);
+    expect(result.explanation?.marginPct).toBeGreaterThan(0);
+  });
+
+  it('сильное дро на флопе → outs и improveChancePct в explanation', () => {
+    const ctx: TableContext = {
+      phase: 'flop',
+      board: ['2h', '7h', '9c'],
+      holeCards: ['Ah', 'Kh'],
+      potSize: 100,
+      toCall: 50,
+      numPlayers: 4,
+      positionIndex: 0,
+    };
+    const result = getAdvice(ctx);
+    expect(['call', 'raise']).toContain(result.action);
+    expect(result.explanation?.outs).toBeGreaterThanOrEqual(8);
+    expect(result.explanation?.improveChancePct).toBeGreaterThan(0);
+    expect(result.explanation?.impliedReason).toMatch(/дро|монстр/);
+  });
+
+  it('банк не указан → potOddsUnavailable без requiredPct', () => {
+    const ctx = baseContext({ potSize: 0, toCall: 25, equityPercent: 40 });
+    const result = getAdvice(ctx);
+    expect(result.explanation?.potOddsUnavailable).toBe(true);
+    expect(result.explanation?.requiredPct).toBeUndefined();
+    expect(result.explanation?.potOdds).toBeUndefined();
+  });
+
+  it('маргинальное решение → isMarginal при CI вокруг порога', () => {
+    const ctx: TableContext = {
+      ...baseContext({ potSize: 100, toCall: 40 }),
+      equityPercent: 29,
+      equityLow: 26,
+      equityHigh: 32,
+    };
+    const result = getAdvice(ctx);
+    expect(result.explanation?.isMarginal).toBe(true);
+    expect(result.explanation?.requiredPct).toBeCloseTo(28.6, 0);
+  });
+});
+
+describe('динамическая надёжность (confidence)', () => {
+  it('слабый фолд с большим дефицитом надёжнее, чем фолд у порога', () => {
+    const largeDeficit = getAdvice(
+      baseContext({ potSize: 10, toCall: 100, equityPercent: 15, positionIndex: 3 }),
+    );
+    const nearThreshold = getAdvice(
+      baseContext({
+        potSize: 100,
+        toCall: 50,
+        equityPercent: 31,
+        equityLow: 28,
+        equityHigh: 34,
+        positionIndex: 3,
+      }),
+    );
+    expect(largeDeficit.action).toBe('fold');
+    expect(nearThreshold.action).toBe('fold');
+    expect(largeDeficit.confidence).toBeGreaterThan(nearThreshold.confidence);
+  });
+
+  it('колл с большим запасом надёжнее, чем колл у порога', () => {
+    const largeSurplus = getAdvice(
+      baseContext({ potSize: 1000, toCall: 10, equityPercent: 55 }),
+    );
+    const closeCall = getAdvice({
+      phase: 'flop',
+      board: ['2d', '7c', '9h'],
+      holeCards: ['Ah', 'Kd'],
+      potSize: 100,
+      toCall: 50,
+      numPlayers: 4,
+      positionIndex: 0,
+      equityPercent: 39,
+      equityLow: 36,
+      equityHigh: 42,
+    });
+    expect(largeSurplus.action).toBe('call');
+    expect(closeCall.action).toBe('call');
+    expect(largeSurplus.confidence).toBeGreaterThan(closeCall.confidence);
+  });
+
+  it('без пот-оддсов надёжность ниже, чем при тех же картах с банком', () => {
+    const withPotOdds = getAdvice(
+      baseContext({ potSize: 100, toCall: 50, equityPercent: 40 }),
+    );
+    const withoutPotOdds = getAdvice(
+      baseContext({ potSize: 0, toCall: 50, equityPercent: 40 }),
+    );
+    expect(withPotOdds.explanation?.requiredPct).toBeDefined();
+    expect(withoutPotOdds.explanation?.potOddsUnavailable).toBe(true);
+    expect(withoutPotOdds.confidence).toBeLessThan(withPotOdds.confidence);
+  });
+
+  it('сильные руки сохраняют высокую надёжность независимо от gap', () => {
+    const premium = getAdvice({
+      phase: 'preflop',
+      board: [],
+      holeCards: ['Ah', 'Ad'],
+      potSize: 30,
+      toCall: 15,
+      numPlayers: 6,
+      positionIndex: 0,
+    });
+    expect(premium.action).toBe('raise');
+    expect(premium.confidence).toBeGreaterThanOrEqual(0.85);
+  });
+});
+
 describe('модификатор совета по PFR активного оппонента', () => {
   // Базовый контекст: средняя рука на флопе, toCall>0, маргинальная эквити.
   function baseCtx(overrides: Partial<TableContext> = {}): TableContext {
@@ -327,14 +481,14 @@ describe('модификатор совета по PFR активного опп
     const ctx = baseCtx({ opponents: nit, activeOpponentIndex: 0 });
     const result = getAdvice(ctx);
     // Нит-рейз весомее → фолд или пониженная уверенность в колле.
-    expect(result.reason).toMatch(/тайтов|PFR|весомее|фолд/i);
+    expect(adviceText(result)).toMatch(/тайтов|PFR|весомее|фолд/i);
   });
 
   it('против маньяка (PFR 45) порог фолда ниже → совет мягче к коллу', () => {
     const maniac: Opponent[] = [{ position: 1, stats: { vpip: 60, pfr: 45 } }];
     const ctx = baseCtx({ opponents: maniac, activeOpponentIndex: 0 });
     const result = getAdvice(ctx);
-    expect(result.reason).toMatch(/агрессив|блеф|колл|шире/i);
+    expect(adviceText(result)).toMatch(/агрессив|блеф|колл/i);
   });
 
   it('без activeOpponentIndex модификатор не применяется (обратная совместимость)', () => {
@@ -342,7 +496,7 @@ describe('модификатор совета по PFR активного опп
     const ctx = baseCtx({ opponents: nit }); // без activeOpponentIndex
     const result = getAdvice(ctx);
     // Не должно быть заметки про тайтового оппонента.
-    expect(result.reason).not.toMatch(/тайтов|весомее/i);
+    expect(adviceText(result)).not.toMatch(/тайтов|весомее/i);
   });
 
   it('без opponents вообще — как раньше (обратная совместимость)', () => {

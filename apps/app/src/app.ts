@@ -11,16 +11,17 @@ import {
   clampNumPlayers,
   clampPositionIndex,
   getPositionHelpHtml,
-  getPositionName,
   getTablePositions,
   type Card,
   type TablePosition,
+  type AdviceExplanation,
 } from '@poker/core';
 import { impactLight, impactMedium, selectionChanged, notificationWarning, notificationSuccess } from './haptics';
 import { calcEquitySync } from './equity-fallback';
 import { cardToHtml, setPreviewCardImage, setTriggerCardImage } from './cards';
 import { handRankingsButtonIcon, openHandRankingsPanel } from './hand-rankings-ui';
 import { loadState, saveState, clearState, getDefaultState, type AppState } from './state';
+import { ui, t, type ActionLabels } from './i18n';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = ['s', 'h', 'd', 'c'];
@@ -56,6 +57,163 @@ function getPhase(boardLength: number): 'preflop' | 'flop' | 'turn' | 'river' {
   if (boardLength === 3) return 'flop';
   if (boardLength === 4) return 'turn';
   return 'river';
+}
+
+function explanationRow(label: string, value: string, note?: string): string {
+  return `<div class="explanation-row">
+    <span class="explanation-label">${label}</span>
+    <span class="explanation-value">${value}</span>
+    ${note ? `<span class="explanation-note">${note}</span>` : ''}
+  </div>`;
+}
+
+/** Целое — без дроби, иначе одна цифра после запятой. */
+function formatExplanationPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function formatGapPp(gap: number): string {
+  const formatted = formatExplanationPct(Math.abs(gap));
+  return gap >= 0 ? `+${formatted}` : `−${formatted}`;
+}
+
+function decisionReliabilityNote(confidence: number, marginPct: number | undefined, isMarginal?: boolean): string {
+  const U = ui();
+  const absGap = marginPct != null ? Math.abs(marginPct) : 0;
+  if (isMarginal || absGap < 8 || confidence < 0.55) {
+    return U.reliability.borderline;
+  }
+  if (confidence >= 0.72 || absGap >= 18) {
+    return U.reliability.confident;
+  }
+  return U.reliability.moderate;
+}
+
+function renderAdviceExplanation(
+  explanation: AdviceExplanation | undefined,
+  action: string,
+  confidence: number,
+  potSize: number,
+  toCall: number,
+  boardLength: number,
+): string {
+  if (!explanation) return '';
+
+  const U = ui();
+  const rows: string[] = [];
+  const callAmount = explanation.toCall ?? toCall;
+  const potAmount = explanation.potSize ?? potSize;
+  const hasPotOdds = callAmount > 0 && potAmount > 0 && explanation.requiredPct != null;
+  const effective = explanation.effectiveRequiredPct ?? explanation.requiredPct;
+  const hasImplied =
+    explanation.impliedOdds != null &&
+    explanation.impliedOdds < 1 &&
+    explanation.effectiveRequiredPct != null &&
+    explanation.effectiveRequiredPct !== explanation.requiredPct;
+
+  if (callAmount > 0 && potAmount > 0) {
+    const potAfterCall = potAmount + callAmount;
+    rows.push(
+      explanationRow(
+        U.labels.price,
+        `${callAmount} → ${potAfterCall}`,
+        t(U.explanation.priceNote, { call: callAmount, potAfter: potAfterCall }),
+      ),
+    );
+  }
+
+  if (hasPotOdds && explanation.requiredPct != null && effective != null) {
+    const basePctStr = formatExplanationPct(explanation.requiredPct);
+    const effectivePctStr = formatExplanationPct(effective);
+    const thresholdValue = hasImplied
+      ? `${effectivePctStr}% <span class="explanation-muted">(было ${basePctStr}%)</span>`
+      : `${basePctStr}%`;
+    let thresholdNote = t(U.explanation.thresholdNote, {
+      call: callAmount,
+      pot: potAmount,
+      pct: basePctStr,
+    });
+    if (hasImplied) {
+      thresholdNote += t(U.explanation.thresholdImpliedNote, { eff: effectivePctStr });
+    }
+    rows.push(explanationRow(U.labels.threshold, thresholdValue, thresholdNote));
+  } else if (explanation.potOddsUnavailable) {
+    rows.push(
+      explanationRow(
+        U.labels.threshold,
+        U.explanation.thresholdUnavailable,
+        U.explanation.thresholdUnavailableNote,
+      ),
+    );
+  }
+
+  let equityValue = `${explanation.equityPct}%`;
+  const hasEquityRange =
+    explanation.equityLow != null && explanation.equityHigh != null;
+  if (hasEquityRange) {
+    equityValue = `${explanation.equityLow}%–${explanation.equityHigh}%`;
+  }
+  let equityNote = U.explanation.equityNote;
+  if (hasEquityRange) {
+    equityNote += U.explanation.equityRangeNote;
+  }
+  rows.push(explanationRow(U.labels.equity, equityValue, equityNote));
+
+  if (hasPotOdds && explanation.marginPct != null && effective != null) {
+    const equityStr = formatExplanationPct(explanation.equityPct);
+    const thresholdStr = formatExplanationPct(effective);
+    const gapStr = formatGapPp(explanation.marginPct);
+    const gapNote = explanation.marginPct >= 0
+      ? t(U.explanation.gapPositiveNote, { eq: equityStr, thr: thresholdStr, gap: gapStr })
+      : t(U.explanation.gapNegativeNote, { eq: equityStr, thr: thresholdStr, gap: gapStr });
+    rows.push(explanationRow(U.labels.gap, `${gapStr} п.п.`, gapNote));
+  }
+
+  const actionLabel = U.actions[action as keyof ActionLabels] ?? action;
+  const decisionNote = decisionReliabilityNote(confidence, explanation.marginPct, explanation.isMarginal);
+  rows.push(
+    explanationRow(
+      U.labels.decision,
+      actionLabel,
+      decisionNote,
+    ),
+  );
+
+  if (boardLength >= 3 && boardLength < 5 && explanation.outs != null && explanation.outs > 0) {
+    const improve =
+      explanation.improveChancePct != null
+        ? t(U.explanation.outsImprove, { pct: explanation.improveChancePct })
+        : '';
+    rows.push(
+      explanationRow(
+        U.labels.outs,
+        String(explanation.outs),
+        `${U.explanation.outsNote}${improve}`,
+      ),
+    );
+  }
+
+  if (explanation.impliedOdds != null && explanation.impliedOdds < 1 && explanation.impliedReason) {
+    rows.push(
+      explanationRow(
+        U.labels.impliedOdds,
+        explanation.impliedReason,
+        U.explanation.impliedNote,
+      ),
+    );
+  }
+
+  if (rows.length === 0) return '';
+
+  return `
+    <details class="results-details results-explanation">
+      <summary>Почему так?</summary>
+      <div class="results-details-body explanation-body">
+        ${rows.join('')}
+      </div>
+    </details>
+  `;
 }
 
 function renderCardOption(value: string, label: string): string {
@@ -431,7 +589,19 @@ export function initApp(): void {
         </button>
         <button type="button" class="title-help-trigger btn-ripple" aria-label="Инструкция">?</button>
         <div class="title-help-popover" id="title-help-popover" role="tooltip" hidden>
-          <p>Это тренажёр Texas Hold'em. Введите свои карты и борд, выберите позицию, укажите банк и сумму колла — и нажмите «Рассчитать». Вы получите совет, эквити и подсказки по аутам.</p>
+          <p class="title-help-intro">Введите карты, борд, позицию, банк и колл — нажмите «Рассчитать». Ниже — совет и расчёты.</p>
+          <dl class="title-help-glossary">
+            <dt>Эквити</dt>
+            <dd>Ваш шанс выиграть банк, когда все общие карты выложены и раздача доходит до вскрытия. На префлопе — одно число, на флопе и дальше — ещё и диапазон.</dd>
+            <dt>Надёжность по данным</dt>
+            <dd>Насколько однозначен совет при введённых картах, банке, колле и числе игроков. Чем выше %, тем меньше сомнений между коллом и фолдом. Это не шанс выиграть — за шанс отвечает эквити.</dd>
+            <dt>Порог колла</dt>
+            <dd>Минимальный шанс на победу, при котором колл окупается: колл ÷ (банк + колл). Если эквити ниже — выгоднее сбросить.</dd>
+            <dt>Ауты</dt>
+            <dd>Карты в колоде, которые могут усилить руку на терне или ривере. Показываются в блоке «Почему так?» на флопе и терне.</dd>
+            <dt>Совет</dt>
+            <dd>FOLD / CHECK / CALL / RAISE — рекомендация по эквити, пот-оддсам, силе руки и аутам.</dd>
+          </dl>
         </div>
         <button type="button" class="rankings-trigger btn-ripple" id="rankings-trigger" aria-label="Комбинации" title="Комбинации">
           ${handRankingsButtonIcon()}
@@ -975,7 +1145,6 @@ export function initApp(): void {
     const eqRange = await requestEquity(holeCards, board, numPlayers - 1, iterationsAllIn);
     if (eqRange.isStale) return;
     const nutsInfo = board.length === 5 ? compareToNuts(holeCards, board) : null;
-    const phaseLabel = phase === 'preflop' ? 'Префлоп' : phase === 'flop' ? 'Флоп' : phase === 'turn' ? 'Терн' : 'Ривер';
     const advice = getAdvice({
       phase,
       board,
@@ -1008,14 +1177,20 @@ export function initApp(): void {
       : advice.action === 'check' ? 'results-action results-action--neutral'
       : 'results-action results-action--positive';
 
+    const U = ui();
+
     const equityClass = eqRange.percent < 35 ? 'results-equity results-equity--low' : 'results-equity';
-    const confidencePct = Math.round(advice.confidence * 100);
+    const reliabilityPct = Math.round(advice.confidence * 100);
 
     let html = `
       <div class="results-hero animate-fade-in-up">
         <div class="results-hero-top">
           <div class="${actionClass}">${advice.action.toUpperCase()}</div>
-          <div class="results-confidence">уверенность ${confidencePct}%</div>
+          <div class="results-confidence" title="${U.confidence.tooltip}">
+            <span class="results-confidence-label results-confidence-label--full">${U.confidence.title}</span>
+            <span class="results-confidence-label results-confidence-label--short" aria-hidden="true">${U.confidence.titleShort}</span>
+            ${reliabilityPct}%
+          </div>
         </div>
         ${board.length >= 3 ? `
           <div class="results-equity-row">
@@ -1024,17 +1199,15 @@ export function initApp(): void {
           </div>
         ` : ''}
         <p class="results-reason">${advice.reason}</p>
-        <div class="results-context">
-          <span>${phaseLabel}</span>
-          <span>·</span>
-          <span>${numPlayers} игроков</span>
-          <span>·</span>
-          <span>${getPositionName(positionIndex, numPlayers)}</span>
-          ${potSize > 0 ? `<span>·</span><span>Банк ${potSize}</span>` : ''}
-          ${toCall > 0 ? `<span>·</span><span>Колл ${toCall}</span>` : ''}
-        </div>
+        ${advice.details?.length ? `
+          <ul class="results-facts">
+            ${advice.details.map((d) => `<li>${d}</li>`).join('')}
+          </ul>
+        ` : ''}
       </div>
     `;
+
+    html += renderAdviceExplanation(advice.explanation, advice.action, advice.confidence, potSize, toCall, board.length);
 
     html += `
       <div class="results-hand">
@@ -1063,7 +1236,7 @@ export function initApp(): void {
           <summary>Эквити</summary>
           <div class="results-details-body">
             <p>${eqRange.low}%–${eqRange.high}% — шанс лучшей руки против ${numPlayers - 1} оппонентов (~${eqRange.percent}% в среднем).</p>
-            <p class="results-hint">Семантика: вероятность, что ваша рука сильнее всех на шоудауне (P(best)), а не доля банка.</p>
+            <p class="results-hint">Семантика: вероятность, что к концу раздачи ваша рука сильнее всех оппонентов, а не доля банка.</p>
           </div>
         </details>
       `;

@@ -16,6 +16,7 @@ export type {
   TableContext,
   OutsResult,
   AdviceResult,
+  AdviceExplanation,
   PositionIndex,
 } from './types';
 export { RANKS, SUITS, HandRank, POSITION_NAMES } from './types';
@@ -28,6 +29,10 @@ export { getNuts, compareToNuts } from './eval/nuts';
 // Ауты и эквити (equity/)
 export { countOuts, totalOuts } from './equity/outs';
 export { equity, equityPercent, equityPercentRange } from './equity/equity';
+
+// i18n (i18n/) — словарь текстовок совета (правка формулировок без касания логики)
+export { messages, getLocale, setLocale, fmt } from './i18n';
+export type { AdviceMessages, AdviceReasonMessages, AdviceDetailsMessages, Locale } from './i18n';
 
 // Стратегия (strategy/)
 export { getAdvice } from './strategy/advice';
