@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# Заливает APK-файл на Яндекс.Диск в указанную папку.
+# Заливает APK-файл на Яндекс.Диск в папку приложения (sandbox).
 #
 # Использование:
 #   ./scripts/upload-yadisk.sh <apk-file>
 #
 # Конфиг берётся из .env.yandex в корне проекта (см. .env.yandex.example).
 #   YADISK_TOKEN   — OAuth-токен (https://oauth.yandex.ru)
-#   YADISK_FOLDER  — путь к папке на Диске, например /poker-assistant/test-builds
+#   YADISK_FOLDER  — путь внутри app:/, например poker-assistant/test-builds
+#                    (без ведущего слэша). В самом Диске это будет раздел
+#                    "Приложения" → <имя приложения> → <YADISK_FOLDER>.
+#
+# Требуемые OAuth-scopes: cloud_api:disk.app_folder, cloud_api:disk.info
+# (минимально достаточно для загрузки файлов внутри песочницы приложения).
 #
 # Имя файла на Диске формируется автоматически:
 #   poker-assistant_<branch>_<short-sha>_<version>_<YYYYMMDD-HHMMSS>.apk
@@ -58,23 +63,28 @@ APK_NAME="poker-assistant_${BRANCH}_${SHORT_SHA}_v${VERSION}_${TS}.apk"
 APK_SIZE_BYTES="$(wc -c <"$APK_SRC" | tr -d ' ')"
 APK_SIZE_MB="$(awk -v b="$APK_SIZE_BYTES" 'BEGIN{printf "%.1f", b/1024/1024}')"
 
-DEST_PATH="${YADISK_FOLDER%/}/${APK_NAME}"
+DEST_PATH="app:/${YADISK_FOLDER#/}"
+DEST_PATH="${DEST_PATH%/}/${APK_NAME}"
 
 echo "→ Заливаю на Яндекс.Диск"
 echo "    Из:    $APK_SRC ($APK_SIZE_MB MiB)"
 echo "    В:     $DEST_PATH"
 
 # --- 1. создать папку назначения (идемпотентно) ----------------------------
+# YADISK_FOLDER хранится без префикса app:/. Перед запросом добавляем.
+PARENT_DIR="app:/${YADISK_FOLDER#/}"
+PARENT_DIR="${PARENT_DIR%/}"
+
 mkdir_response="$(curl -sS -X PUT \
   -H "Authorization: OAuth $YADISK_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"path":"'"$YADISK_FOLDER"'"}' \
-  "https://cloud-api.yandex.net/v1/disk/resources?path=$(printf '%s' "$YADISK_FOLDER" | jq -sRr @uri)")"
+  -d '{"path":"'"$PARENT_DIR"'"}' \
+  "https://cloud-api.yandex.net/v1/disk/resources?path=$(printf '%s' "$PARENT_DIR" | jq -sRr @uri)")"
 
 mkdir_code="$(printf '%s' "$mkdir_response" | jq -r '.error // "ok"' 2>/dev/null || echo "ok")"
 # 409 = "already exists" — это норм.
 case "$mkdir_code" in
-  ok|"") echo "    ✓ Папка готова: $YADISK_FOLDER" ;;
+  ok|"") echo "    ✓ Папка готова: $PARENT_DIR" ;;
   *) echo "    ⚠ Создание папки: $mkdir_code (продолжаю)" ;;
 esac
 
@@ -102,14 +112,6 @@ if [[ "$http_code" != "201" && "$http_code" != "200" ]]; then
   exit 1
 fi
 
-# --- 4. опубликовать ссылку (по желанию) -----------------------------------
-public_meta="$(curl -sS -X PUT \
-  -H "Authorization: OAuth $YADISK_TOKEN" \
-  "https://cloud-api.yandex.net/v1/disk/resources/publish?path=$(printf '%s' "$DEST_PATH" | jq -sRr @uri)" || true)"
-
-public_url="$(printf '%s' "$public_meta" | jq -r '.public_url // empty' 2>/dev/null || true)"
-
+# --- 4. финал -------------------------------------------------------------
 echo "    ✓ Залито: $DEST_PATH"
-if [[ -n "$public_url" ]]; then
-  echo "    🔗 Публичная ссылка: $public_url"
-fi
+echo "    В Диске: раздел \"Приложения\" → папка приложения → $YADISK_FOLDER"
