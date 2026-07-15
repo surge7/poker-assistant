@@ -28,7 +28,20 @@ if [[ -f "$ROOT/.env.yandex" ]]; then
   echo ""
   echo "Заливаю APK на Яндекс.Диск..."
   if ! bash "$ROOT/scripts/upload-yadisk.sh" "$APK_DST"; then
-    echo "⚠ Заливка на Яндекс.Диск не удалась (см. выше). Локальный APK на месте." >&2
+    echo "⚠ Заливка APK не удалась (см. выше). Локальный APK на месте." >&2
+  fi
+
+  # --- single-HTML (portable) тоже в ту же папку -------------------------
+  echo ""
+  echo "Сборка single-HTML (portable)..."
+  if (cd "$APP_DIR" && npm run build:single-html) && [[ -f "$APP_DIR/poker-assistant.html" ]]; then
+    echo ""
+    echo "Заливаю single-HTML на Яндекс.Диск..."
+    if ! bash "$ROOT/scripts/upload-yadisk.sh" "$APP_DIR/poker-assistant.html"; then
+      echo "⚠ Заливка single-HTML не удалась. Локальный файл на месте." >&2
+    fi
+  else
+    echo "⚠ Сборка single-HTML не удалась — пропускаю заливку." >&2
   fi
 else
   echo ""

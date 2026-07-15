@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Заливает APK-файл на Яндекс.Диск в папку приложения (sandbox).
+# Заливает файл на Яндекс.Диск в папку приложения (sandbox).
+# Расширение файла сохраняется (apk, html, …).
 #
 # Использование:
-#   ./scripts/upload-yadisk.sh <apk-file>
+#   ./scripts/upload-yadisk.sh <file>
 #
 # Конфиг берётся из .env.yandex в корне проекта (см. .env.yandex.example).
 #   YADISK_TOKEN   — OAuth-токен (https://oauth.yandex.ru)
@@ -14,17 +15,17 @@
 # (минимально достаточно для загрузки файлов внутри песочницы приложения).
 #
 # Имя файла на Диске формируется автоматически:
-#   poker-assistant_<branch>_<short-sha>_<version>_<YYYYMMDD-HHMMSS>.apk
+#   poker-assistant_<branch>_<short-sha>_<version>_<YYYYMMDD-HHMMSS>.<ext>
 # (с timestamp'ом в локальной TZ, чтобы легко сортировать).
 
 set -euo pipefail
 
 # --- аргументы -------------------------------------------------------------
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <apk-file>" >&2
+  echo "Usage: $0 <file>" >&2
   exit 2
 fi
-APK_SRC="$1"
+SRC_FILE="$1"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env.yandex"
@@ -40,8 +41,8 @@ source "$ENV_FILE"
 : "${YADISK_TOKEN:?YADISK_TOKEN не задан в $ENV_FILE}"
 : "${YADISK_FOLDER:?YADISK_FOLDER не задан в $ENV_FILE}"
 
-if [[ ! -f "$APK_SRC" ]]; then
-  echo "✗ Файл не найден: $APK_SRC" >&2
+if [[ ! -f "$SRC_FILE" ]]; then
+  echo "✗ Файл не найден: $SRC_FILE" >&2
   exit 1
 fi
 
@@ -59,15 +60,27 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/.' '__' || echo "no
 SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "nosha")"
 TS="$(date +%Y%m%d-%H%M%S)"
 
-APK_NAME="poker-assistant_${BRANCH}_${SHORT_SHA}_v${VERSION}_${TS}.apk"
-APK_SIZE_BYTES="$(wc -c <"$APK_SRC" | tr -d ' ')"
-APK_SIZE_MB="$(awk -v b="$APK_SIZE_BYTES" 'BEGIN{printf "%.1f", b/1024/1024}')"
+EXT="${SRC_FILE##*.}"
+EXT="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
+DEST_NAME="poker-assistant_${BRANCH}_${SHORT_SHA}_v${VERSION}_${TS}.${EXT}"
+FILE_SIZE_BYTES="$(wc -c <"$SRC_FILE" | tr -d ' ')"
+FILE_SIZE_MB="$(awk -v b="$FILE_SIZE_BYTES" 'BEGIN{printf "%.1f", b/1024/1024}')"
 
 DEST_PATH="app:/${YADISK_FOLDER#/}"
-DEST_PATH="${DEST_PATH%/}/${APK_NAME}"
+DEST_PATH="${DEST_PATH%/}/${DEST_NAME}"
+
+# Content-Type по расширению (Яндекс не очень строг, но лучше отдавать правильный).
+case "$EXT" in
+  apk) CT="application/vnd.android.package-archive" ;;
+  html|htm) CT="text/html" ;;
+  json) CT="application/json" ;;
+  txt) CT="text/plain" ;;
+  zip) CT="application/zip" ;;
+  *) CT="application/octet-stream" ;;
+esac
 
 echo "→ Заливаю на Яндекс.Диск"
-echo "    Из:    $APK_SRC ($APK_SIZE_MB MiB)"
+echo "    Из:    $SRC_FILE ($FILE_SIZE_MB MiB)"
 echo "    В:     $DEST_PATH"
 
 # --- 1. создать папку назначения (идемпотентно) ----------------------------
@@ -106,8 +119,8 @@ fi
 # --- 3. залить файл --------------------------------------------------------
 http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
   -X PUT \
-  -H "Content-Type: application/vnd.android.package-archive" \
-  --data-binary "@$APK_SRC" \
+  -H "Content-Type: $CT" \
+  --data-binary "@$SRC_FILE" \
   "$upload_href")"
 
 if [[ "$http_code" != "201" && "$http_code" != "200" ]]; then
