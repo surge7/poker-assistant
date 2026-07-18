@@ -22,3 +22,29 @@ APK_DST="$APP_DIR/app-debug.apk"
 cp "$APK_SRC" "$APK_DST"
 echo ""
 echo "Готово. APK скопирован: $APK_DST"
+
+# --- авто-заливка на Яндекс.Диск (если настроено) ------------------------
+if [[ -f "$ROOT/.env.yandex" ]]; then
+  echo ""
+  echo "Заливаю APK на Яндекс.Диск..."
+  if ! bash "$ROOT/scripts/upload-yadisk.sh" "$APK_DST"; then
+    echo "⚠ Заливка APK не удалась (см. выше). Локальный APK на месте." >&2
+  fi
+
+  # --- single-HTML (portable) тоже в ту же папку -------------------------
+  echo ""
+  echo "Сборка single-HTML (portable)..."
+  if (cd "$APP_DIR" && npm run build:single-html) && [[ -f "$APP_DIR/poker-assistant.html" ]]; then
+    echo ""
+    echo "Заливаю single-HTML на Яндекс.Диск..."
+    if ! bash "$ROOT/scripts/upload-yadisk.sh" "$APP_DIR/poker-assistant.html"; then
+      echo "⚠ Заливка single-HTML не удалась. Локальный файл на месте." >&2
+    fi
+  else
+    echo "⚠ Сборка single-HTML не удалась — пропускаю заливку." >&2
+  fi
+else
+  echo ""
+  echo "(.env.yandex не найден — заливка на Яндекс.Диск пропущена."
+echo "  Чтобы включить: cp .env.yandex.example .env.yandex, заполни токен и YADISK_FOLDER.)"
+fi

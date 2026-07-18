@@ -1,5 +1,6 @@
 @import url('./styles/tokens.css');
 @import url('./styles/animations.css');
+@import url('./styles/hand-rankings.css');
 
 /* ============================================================
    Legacy variable aliases → design tokens (tokens.css).
@@ -179,7 +180,9 @@ body {
   right: 0;
   top: calc(100% + var(--space-2));
   padding: var(--space-3);
-  width: min(22rem, 90vw);
+  width: min(24rem, 92vw);
+  max-height: min(70dvh, 28rem);
+  overflow-y: auto;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-relaxed);
@@ -191,8 +194,31 @@ body {
   z-index: var(--z-popover);
 }
 
-.title-help-popover p {
+.title-help-intro {
   margin: 0;
+}
+
+.title-help-glossary {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.title-help-glossary dt {
+  font-weight: var(--font-weight-semibold);
+  color: var(--gold-400);
+  margin-top: var(--space-2);
+}
+
+.title-help-glossary dt:first-child {
+  margin-top: 0;
+}
+
+.title-help-glossary dd {
+  margin: var(--space-1) 0 0;
+  color: var(--text-primary);
+  opacity: 0.88;
+  line-height: var(--line-height-relaxed);
 }
 
 .main {
@@ -1263,6 +1289,19 @@ body {
   white-space: nowrap;
 }
 
+.results-confidence-label--short {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .results-confidence-label--full {
+    display: none;
+  }
+  .results-confidence-label--short {
+    display: inline;
+  }
+}
+
 .results-equity-row {
   display: flex;
   align-items: baseline;
@@ -1289,15 +1328,28 @@ body {
 .results-reason {
   margin: 0;
   font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: var(--line-height-relaxed);
+}
+
+.results-facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.results-facts li {
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
   line-height: var(--line-height-relaxed);
 }
 
-.results-context {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
+.results-facts li::before {
+  content: '· ';
   color: var(--text-muted);
 }
 
@@ -1380,6 +1432,88 @@ body {
 
 .results-details-body p { margin: 0 0 var(--space-1); }
 
+.results-explanation summary {
+  color: var(--gold-300);
+}
+
+.results-explanation .results-details-body {
+  color: var(--text-primary);
+}
+
+.results-explanation .explanation-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explanation-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 38%) 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.explanation-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.explanation-label {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gold-400);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.explanation-value {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-word;
+}
+
+.explanation-value--positive {
+  color: var(--state-success);
+}
+
+.explanation-value--negative {
+  color: var(--state-danger);
+}
+
+.explanation-note {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.explanation-muted {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+@media (max-width: 360px) {
+  .explanation-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .explanation-value {
+    text-align: left;
+  }
+}
+
 .nuts-badge {
   color: var(--gold-400);
   font-weight: var(--font-weight-semibold);
@@ -1459,6 +1593,7 @@ body {
   }
 
   .title-help-trigger,
+  .rankings-trigger,
   .position-help-trigger {
     min-width: 2rem;
     min-height: 2rem;

@@ -25,28 +25,25 @@ export const CALL_MARGIN_OK_PCT = 10;
 export const CALL_THRESHOLD_EARLY_PCT = 0;
 export const CALL_THRESHOLD_LATE_PCT = -5;
 
-/** Confidence для каждого типа совета. Ключи соответствуют веткам в advice.ts. */
+/** Высокая надёжность для очевидных сильных рук (не зависит от gap). */
 export const CONFIDENCE = {
   nuts: 0.95,
   premiumPreflop: 0.9,
   strongHand: 0.8,
-  drawCall: 0.7,
-  foldWeakHandEarly: 0.75,
-  foldWeakHandLate: 0.7,
-  foldLowEquity: 0.7,
-  foldLowEquityMarginal: 0.55,
-  callNoPotOddsStrong: 0.6,
-  callNoPotOddsStrongLate: 0.65,
-  callNoPotOddsWeak: 0.5,
-  callMarginStrong: 0.7,
-  callMarginStrongLate: 0.75,
-  callMarginOk: 0.6,
-  callMarginOkLate: 0.65,
-  borderline: 0.5,
-  borderlineMarginal: 0.4,
-  check: 0.5,
   invalid: 0,
 } as const;
+
+/** Параметры динамической надёжности (gap от порога → 0..1). */
+export const RELIABILITY_MIN = 0.35;
+export const RELIABILITY_MAX = 0.9;
+/** Запас/дефицит в п.п., при котором надёжность достигает максимума. */
+export const RELIABILITY_FULL_GAP_PP = 30;
+/** Потолок надёжности при маргинальном решении (CI вокруг порога). */
+export const RELIABILITY_MARGINAL_CAP = 0.52;
+/** Базовый диапазон без пот-оддсов (банк не задан). */
+export const RELIABILITY_NO_POT_ODDS_MIN = 0.32;
+export const RELIABILITY_NO_POT_ODDS_MAX = 0.55;
+export const RELIABILITY_CHECK = 0.45;
 
 /**
  * Модификатор порога фолда по агрессивности активного оппонента (PFR).

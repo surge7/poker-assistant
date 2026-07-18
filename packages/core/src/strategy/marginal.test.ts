@@ -33,7 +33,7 @@ describe('маргинальные решения (учёт доверитель
       equityHigh: 50,
     });
     const result = getAdvice(ctx);
-    expect(result.reason).not.toMatch(/маргиналь/i);
+    expect(result.explanation?.isMarginal).not.toBe(true);
   });
 
   it('помечает совет как маргинальный, когда требуемая эквити внутри CI', () => {
@@ -47,10 +47,10 @@ describe('маргинальные решения (учёт доверитель
       equityHigh: 55,
     });
     const result = getAdvice(ctx);
-    expect(result.reason).toMatch(/маргиналь/i);
+    expect(result.explanation?.isMarginal).toBe(true);
   });
 
-  it('маргинальный совет имеет меньшую уверенность, чем чёткий', () => {
+  it('маргинальный совет имеет меньшую надёжность, чем чёткий', () => {
     // Тот же ввод, но CI широкий (маргинально) vs узкий (чётко).
     const marginal = getAdvice(baseContext({
       potSize: 100, toCall: 100, equityPercent: 45, equityLow: 35, equityHigh: 55,
@@ -64,7 +64,7 @@ describe('маргинальные решения (учёт доверитель
   it('без CI в контексте не падает и не пишет «маргинально» (обратная совместимость)', () => {
     const ctx = baseContext({ equityPercent: 45 });
     const result = getAdvice(ctx);
-    expect(result.reason).not.toMatch(/маргиналь/i);
+    expect(result.explanation?.isMarginal).not.toBe(true);
     expect(result.action).toBeDefined();
   });
 });

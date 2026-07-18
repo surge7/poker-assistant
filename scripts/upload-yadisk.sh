@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Заливает файл на Яндекс.Диск в папку приложения (sandbox).
+# Расширение файла сохраняется (apk, html, …).
+#
+# Использование:
+#   ./scripts/upload-yadisk.sh <file>
+#
+# Конфиг берётся из .env.yandex в корне проекта (см. .env.yandex.example).
+#   YADISK_TOKEN   — OAuth-токен (https://oauth.yandex.ru)
+#   YADISK_FOLDER  — путь внутри app:/, например poker-assistant/test-builds
+#                    (без ведущего слэша). В самом Диске это будет раздел
+#                    "Приложения" → <имя приложения> → <YADISK_FOLDER>.
+#
+# Требуемые OAuth-scopes: cloud_api:disk.app_folder, cloud_api:disk.info
+# (минимально достаточно для загрузки файлов внутри песочницы приложения).
+#
+# Имя файла на Диске формируется автоматически:
+#   poker-assistant_<branch>_<short-sha>_<version>_<YYYYMMDD-HHMMSS>.<ext>
+# (с timestamp'ом в локальной TZ, чтобы легко сортировать).
+
+set -euo pipefail
+
+# --- аргументы -------------------------------------------------------------
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <file>" >&2
+  exit 2
+fi
+SRC_FILE="$1"
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ENV_FILE="$ROOT/.env.yandex"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "✗ Не найден $ENV_FILE. Создай по образцу .env.yandex.example." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+
+: "${YADISK_TOKEN:?YADISK_TOKEN не задан в $ENV_FILE}"
+: "${YADISK_FOLDER:?YADISK_FOLDER не задан в $ENV_FILE}"
+
+if [[ ! -f "$SRC_FILE" ]]; then
+  echo "✗ Файл не найден: $SRC_FILE" >&2
+  exit 1
+fi
+
+# --- метаданные ------------------------------------------------------------
+cd "$ROOT"
+
+# Версия из package.json ближайшего workspace (apps/app/package.json).
+VERSION=""
+if [[ -f "apps/app/package.json" ]]; then
+  VERSION="$(node -p "require('./apps/app/package.json').version" 2>/dev/null || true)"
+fi
+[[ -z "$VERSION" ]] && VERSION="0.0.0"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/.' '__' || echo "nobranch")"
+SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "nosha")"
+TS="$(date +%Y%m%d-%H%M%S)"
+
+EXT="${SRC_FILE##*.}"
+EXT="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
+DEST_NAME="poker-assistant_${BRANCH}_${SHORT_SHA}_v${VERSION}_${TS}.${EXT}"
+FILE_SIZE_BYTES="$(wc -c <"$SRC_FILE" | tr -d ' ')"
+FILE_SIZE_MB="$(awk -v b="$FILE_SIZE_BYTES" 'BEGIN{printf "%.1f", b/1024/1024}')"
+
+DEST_PATH="app:/${YADISK_FOLDER#/}"
+DEST_PATH="${DEST_PATH%/}/${DEST_NAME}"
+
+# Content-Type по расширению (Яндекс не очень строг, но лучше отдавать правильный).
+case "$EXT" in
+  apk) CT="application/vnd.android.package-archive" ;;
+  html|htm) CT="text/html" ;;
+  json) CT="application/json" ;;
+  txt) CT="text/plain" ;;
+  zip) CT="application/zip" ;;
+  *) CT="application/octet-stream" ;;
+esac
+
+echo "→ Заливаю на Яндекс.Диск"
+echo "    Из:    $SRC_FILE ($FILE_SIZE_MB MiB)"
+echo "    В:     $DEST_PATH"
+
+# --- 1. создать папку назначения (идемпотентно) ----------------------------
+# Yandex API не создаёт промежуточные директории — идём по уровням.
+IFS='/' read -r -a PARTS <<<"${YADISK_FOLDER#/}"
+ACC="app:/"
+for part in "${PARTS[@]}"; do
+  [[ -z "$part" ]] && continue
+  ACC="${ACC%/}/$part"
+  resp="$(curl -sS -X PUT \
+    -H "Authorization: OAuth $YADISK_TOKEN" \
+    "https://cloud-api.yandex.net/v1/disk/resources?path=$(printf '%s' "$ACC" | jq -sRr @uri)")"
+  err="$(printf '%s' "$resp" | jq -r '.error // empty' 2>/dev/null)"
+  # 409 DiskPathPointsToExistentDirectoryError — ок, уже есть.
+  if [[ -z "$err" || "$err" == *"DiskPathPointsToExistentDirectoryError"* ]]; then
+    :
+  else
+    echo "    ⚠ Создание $ACC: $err (продолжаю)"
+  fi
+done
+PARENT_DIR="$ACC"
+echo "    ✓ Папка готова: $PARENT_DIR"
+
+# --- 2. получить URL для загрузки ------------------------------------------
+upload_meta="$(curl -sS -X GET \
+  -H "Authorization: OAuth $YADISK_TOKEN" \
+  "https://cloud-api.yandex.net/v1/disk/resources/upload?path=$(printf '%s' "$DEST_PATH" | jq -sRr @uri)&overwrite=true")"
+
+upload_href="$(printf '%s' "$upload_meta" | jq -r '.href // empty')"
+if [[ -z "$upload_href" ]]; then
+  echo "✗ Не удалось получить upload URL. Ответ API:" >&2
+  printf '%s\n' "$upload_meta" >&2
+  exit 1
+fi
+
+# --- 3. залить файл --------------------------------------------------------
+http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -X PUT \
+  -H "Content-Type: $CT" \
+  --data-binary "@$SRC_FILE" \
+  "$upload_href")"
+
+if [[ "$http_code" != "201" && "$http_code" != "200" ]]; then
+  echo "✗ Загрузка не удалась (HTTP $http_code)" >&2
+  exit 1
+fi
+
+# --- 4. финал -------------------------------------------------------------
+echo "    ✓ Залито: $DEST_PATH"
+echo "    В Диске: раздел \"Приложения\" → папка приложения → $YADISK_FOLDER"
