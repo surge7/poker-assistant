@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Отменяем дублирующиеся прогоны для той же ветки/PR.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # Unit-тесты ядра (Vitest): 14 файлов / 118 тестов.
+  # ──────────────────────────────────────────────────────────────────
+  test-core:
+    name: Core unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Пин до LTS-линейки 22. Локально на Node 26 наблюдается
+          # DEP0205 (module.register) — это апстрим-вопрос Playwright,
+          # в нашем коде не чинится; здесь снимается фиксом версии.
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+      # --coverage: измеряет покрытие и проверяет пороги из
+      # packages/core/vitest.config.ts (Lines/Stmts ≥ 88, Funcs ≥ 85,
+      # Branches ≥ 85). Просадка роняет CI.
+      - run: npm test -w @poker/core -- --coverage
+
+  # ──────────────────────────────────────────────────────────────────
+  # E2E (Playwright): 4 файла / 17 тестов, chromium (Pixel 5).
+  # ──────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Сначала ядро (tsup → dist/), затем приложение (vite → dist/).
+      # Порядок рабочих пространств: packages/*, затем apps/*.
+      - name: Build (core + app)
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        id: pw-cache
+
+      - name: Install Playwright browsers
+        working-directory: apps/app
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: apps/app
+        env:
+          CI: 'true'
+        run: npx playwright test
+
+      # Артефакты для разбора флапов/падений (traces — on-first-retry).
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/app/playwright-report/
+          retention-days: 14

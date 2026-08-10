@@ -3,8 +3,11 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
-  retries: 0,
-  reporter: 'list',
+  // В CI — 2 ретрая: тест, упавший 1 раз и прошедший на ретрае,
+  // и есть «флап». Локально — 0 для быстрого фидбека.
+  // trace: 'on-first-retry' ниже захватит трейс первого падения.
+  retries: process.env.CI ? 2 : 0,
+  reporter: process.env.CI ? [['list'], ['html']] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
