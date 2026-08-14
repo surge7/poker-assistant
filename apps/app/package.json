@@ -32,7 +32,7 @@
   "dependencies": {
     "@capacitor/haptics": "^6.0.3",
     "@capacitor/status-bar": "^6.0.3",
-    "@poker/core": "file:../../packages/core"
+    "@poker/core": "*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
