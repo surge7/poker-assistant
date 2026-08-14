@@ -34,6 +34,9 @@ apps/app/portable/
 apps/app/poker-assistant-portable.zip
 apps/app/poker-assistant.html
 
+# Дизайн-исходники иконок (не для git)
+apps/app/icon_backup/
+
 # Agent/tooling artifacts (task trackers, evidence, temp screenshots)
 .omo/
 .sisyphus/
