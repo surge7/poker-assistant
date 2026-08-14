@@ -111,7 +111,9 @@ export class EquityClient {
       const onMessage = (e: MessageEvent) => {
         const data = e.data as { id: number; percent: number; low: number; high: number };
         if (data.id === id) {
-          this.worker!.removeEventListener('message', onMessage);
+          // После disable() (watchdog/error) воркер занулён — позднее
+          // сообщение не должно падать с TypeError на removeEventListener.
+          if (this.worker) this.worker.removeEventListener('message', onMessage);
           if (entry.timer) clearTimeout(entry.timer);
           this.pending.delete(id);
           resolve({ percent: data.percent, low: data.low, high: data.high, isStale: checkStale() });

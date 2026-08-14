@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getDefaultState, saveState, loadState, clearState } from './state';
-import type { AppState } from './state';
+import { getDefaultState, saveState, loadState, clearState, type AppState } from './state';
 
 describe('state persistence', () => {
   beforeEach(() => {
