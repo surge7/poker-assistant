@@ -30,7 +30,7 @@ self.onmessage = (e: MessageEvent<EquityRequest>) => {
     const result = equityPercentRange(holeCards, board, numOpponents, iterations);
     const response: EquityResponse = { id, ...result };
     (self as unknown as Worker).postMessage(response);
-  } catch (err) {
+  } catch {
     // При ошибке — возвращаем id с нулевым результатом, чтобы main-поток не завис.
     const response: EquityResponse = { id, percent: 0, low: 0, high: 0 };
     (self as unknown as Worker).postMessage(response);

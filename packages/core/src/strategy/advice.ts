@@ -21,7 +21,7 @@ import { evaluatePlayerHand } from '../eval/hand-eval';
 import { totalOuts } from '../equity/outs';
 import { compareToNuts } from '../eval/nuts';
 import { isLatePosition } from './positions';
-import type { TableContext, AdviceResult, AdviceExplanation, Card } from '../types';
+import type { TableContext, AdviceResult, AdviceExplanation } from '../types';
 import { HandRank } from '../types';
 import {
   FOLD_EQUITY_MULTIPLIER,

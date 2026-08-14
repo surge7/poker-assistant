@@ -25,14 +25,14 @@ const EXT = ['.png', '.jpg', '.jpeg', '.webp'];
 async function ensureDir(p) {
   try {
     await mkdir(p, { recursive: true });
-  } catch (_) {}
+  } catch {}
 }
 
 async function getSharp() {
   try {
     const sharp = (await import('sharp')).default;
     return sharp;
-  } catch (e) {
+  } catch {
     console.error('Установите sharp: npm install sharp');
     process.exit(1);
   }
@@ -94,7 +94,7 @@ async function main() {
       files = entries
         .filter((e) => e.isFile() && EXT.includes(path.extname(e.name).toLowerCase()))
         .map((e) => path.join(inputDir, e.name));
-    } catch (e) {
+    } catch {
       console.error('Папка не найдена или пуста:', inputDir);
       console.error('Положите скриншоты в store-screenshots-input/ и запустите: npm run store-screenshots');
       process.exit(1);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { equity, equityPercent } from './equity';
+import { equityPercent } from './equity';
 import type { Card } from '../types';
 
 /**

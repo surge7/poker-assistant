@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 
-export async function runAxe(page: Page) {
+export async function runAxe(_page: Page) {
   return;
 }
 
