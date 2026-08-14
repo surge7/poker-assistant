@@ -105,7 +105,7 @@ jobs:
         working-directory: apps/app/android
         run: ./gradlew assembleDebug --stacktrace
       - name: Upload APK
-        if: ${{ !cancelled() }}
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
