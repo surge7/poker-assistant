@@ -1,3 +1,12 @@
+# ──────────────────────────────────────────────────────────────────
+# Состав workflow (одна строка на job):
+# - test-core — юнит-тесты ядра (Vitest, coverage-пороги)
+# - test-app — юнит-тесты приложения (Vitest, happy-dom)
+# - typecheck — проверка типов (tsc --noEmit)
+# - lint — ESLint
+# - e2e — E2E-тесты (Playwright, chromium Pixel 5)
+# - android-debug-apk — smoke-сборка Android debug APK
+# ──────────────────────────────────────────────────────────────────
 name: CI
 
 on:
@@ -35,6 +44,72 @@ jobs:
       # packages/core/vitest.config.ts (Lines/Stmts ≥ 88, Funcs ≥ 85,
       # Branches ≥ 85). Просадка роняет CI.
       - run: npm test -w @poker/core -- --coverage
+
+  typecheck:
+    name: Typecheck (tsc --noEmit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      # tsup/vite/esbuild НЕ проверяют типы — этот job единственная защита.
+      - run: npm run typecheck
+
+  lint:
+    name: Lint (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  test-app:
+    name: App unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test -w app
+
+  android-debug-apk:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      # web-сборка в android/assets через cap sync
+      - run: npm run build
+      - run: npx cap sync android
+        working-directory: apps/app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Assemble debug APK
+        working-directory: apps/app/android
+        run: ./gradlew assembleDebug --stacktrace
+      - name: Upload APK
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: apps/app/android/app/build/outputs/apk/debug/app-debug.apk
 
   # ──────────────────────────────────────────────────────────────────
   # E2E (Playwright): 4 файла / 17 тестов, chromium (Pixel 5).
