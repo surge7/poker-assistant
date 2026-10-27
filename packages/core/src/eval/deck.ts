@@ -50,7 +50,7 @@ export function isValidCard(card: string): card is Card {
   if (card.length !== 2) return false;
   const r = card[0];
   const s = card[1];
-  return RANKS.includes(r as any) && SUITS.includes(s as any);
+  return (RANKS as readonly string[]).includes(r) && (SUITS as readonly string[]).includes(s);
 }
 
 /** Форматирование карты для отображения (опционально) */
