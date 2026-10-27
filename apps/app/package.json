@@ -36,9 +36,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "6.2.2",
+    "@capacitor/cli": "6.2.2",
+    "@capacitor/core": "6.2.2",
     "@playwright/test": "^1.59.1",
     "happy-dom": "^15.11.7",
     "sharp": "^0.33.0",
@@ -48,5 +48,6 @@
   },
   "capacitor": {
     "webDir": "dist"
-  }
+  },
+  "license": "MIT"
 }
