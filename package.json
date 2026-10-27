@@ -20,5 +20,17 @@
     "eslint": "^9.17.0",
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.18.0"
+  },
+  "description": "Offline poker hand trainer: equity, outs, pot odds and context-aware advice (web + Android)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/surge7/poker-assistant.git"
+  },
+  "bugs": {
+    "url": "https://github.com/surge7/poker-assistant/issues"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

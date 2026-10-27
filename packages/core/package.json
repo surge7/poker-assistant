@@ -27,5 +27,11 @@
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/surge7/poker-assistant.git",
+    "directory": "packages/core"
   }
 }
