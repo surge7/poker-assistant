@@ -14,7 +14,7 @@
 - **Обратная совместимость:** без `opponents`/`activeOpponentIndex` все функции работают идентично текущим. 60 существующих тестов остаются зелёными.
 - **Слоистые зависимости** (из v1.3.0): `config → players → eval → equity → strategy`. `equity/` может импортировать из `players/` (уже разрешено слоем). Циклы запрещены — `layer-deps.test.ts` ловит.
 - **TDD:** каждый шаг — RED (падающий тест) → GREEN (минимальная реализация) → коммит.
-- **Рабочая папка для `npm test`/`npm run build`:** `/Users/gpbu25522/Projects/poker-assistant/packages/core`. Оболочка не сохраняет cwd — используйте `cd` в команде.
+- **Рабочая папка для `npm test`/`npm run build`:** `~/Projects/poker-assistant/packages/core`. Оболочка не сохраняет cwd — используйте `cd` в команде.
 - **Пресеты игроков** (VPIP/PFR) — копируются дословно из §5.1 спеки: Неизвестен 0/0, Нит 12/10, TAG 22/18, LAG 35/28, Фиш 50/8, Маньяк 60/45.
 - **PFR-модификатор** (из §5.4 спеки): `PFR_BASE=18`, `SENSITIVITY=0.015`, `MIN=0.8`, `MAX=1.3`. Формула `factor = clamp(1 + (BASE - pfr) * SENSITIVITY, MIN, MAX)`.
 
@@ -112,7 +112,7 @@ describe('player-presets (5 типов игроков)', () => {
 
 - [ ] **Step 2: Запустить тест (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/player-presets.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/player-presets.test.ts`
 Expected: FAIL — `Cannot find module './player-presets'`.
 
 - [ ] **Step 3: Реализовать player-presets.ts (GREEN)**
@@ -153,13 +153,13 @@ export function getPreset(key: PlayerPresetKey): PlayerPreset {
 
 - [ ] **Step 4: Запустить тест (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/player-presets.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/player-presets.test.ts`
 Expected: PASS, 6 тестов.
 
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/player-presets.ts packages/core/src/config/player-presets.test.ts
 git commit -m "feat(core): config/player-presets.ts — 5 типов игроков (VPIP/PFR)"
 ```
@@ -221,7 +221,7 @@ describe('players/ranges — statsToRange', () => {
 
 - [ ] **Step 2: Запустить тест (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/players/ranges.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/players/ranges.test.ts`
 Expected: FAIL — `vpip: 0` возвращает диапазон (в текущей заглушке нет проверки `vpip<=0`), или модуль не найден.
 
 - [ ] **Step 3: Обновить ranges.ts (GREEN)**
@@ -270,13 +270,13 @@ function clamp(v: number, min: number, max: number): number {
 
 - [ ] **Step 4: Запустить тест (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/players/ranges.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/players/ranges.test.ts`
 Expected: PASS, 5 тестов.
 
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/players/ranges.ts packages/core/src/players/ranges.test.ts
 git commit -m "feat(core): players/ranges.ts — полная statsToRange (vpip<=0 → пусто)"
 ```
@@ -342,7 +342,7 @@ describe('эквити против диапазонов оппонентов (V
 
 - [ ] **Step 2: Запустить тест (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/equity/equity.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/equity/equity.test.ts`
 Expected: FAIL — `equityPercent(..., opponents)` передаёт 5-й аргумент, но сигнатура его не принимает (TypeScript error) или игнорируется.
 
 - [ ] **Step 3: Расширить equity.ts — сигнатуры и логику диапазонов (GREEN)**
@@ -478,20 +478,20 @@ export function equityPercentRange(
 
 - [ ] **Step 4: Запустить тесты (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/equity/equity.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/equity/equity.test.ts`
 Expected: PASS, все тесты (7 старых + 4 новых = 11).
 
 Если тест «AA vs нит < vs случайная» падает (эквити оказалось выше, а не ниже) — это значит диапазон нита оказался слабее случайного. Проверьте логику: AA против топ-15% рук должен иметь НИЖЕ эквити, т.к. топ-15% включает KK/QQ/AK, которые чаще доминируют или крадут банк. Если тест упал в обратную сторону — инвертируйте ассерт (`vsNit > vsRandom` было бы неверно математически; правильное ожидание `vsNit < vsRandom`). Убедитесь что `statsToRange` нита возвращает ~25 рук (топ-15%), и что `dealOpponent` берёт из них.
 
 - [ ] **Step 5: Прогон всех тестов**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test`
 Expected: PASS, ~64 теста (60 + 4 новых). Существующие не сломаны.
 
 - [ ] **Step 6: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/equity/equity.ts packages/core/src/equity/equity.test.ts
 git commit -m "feat(core): эквити против диапазонов оппонентов (Монте-Карло + VPIP)"
 ```
@@ -537,13 +537,13 @@ export const PFR_MODIFIER_MAX = 1.3;
 
 - [ ] **Step 3: Проверить компиляцию**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/packages/core && npx tsc --noEmit`
 Expected: без ошибок.
 
 - [ ] **Step 4: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/thresholds.ts packages/core/src/types.ts
 git commit -m "feat(core): PFR-модификаторы порогов + activeOpponentIndex в TableContext"
 ```
@@ -618,7 +618,7 @@ describe('модификатор совета по PFR активного опп
 
 - [ ] **Step 2: Запустить тесты (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/strategy/advice.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/strategy/advice.test.ts`
 Expected: FAIL — новые тесты падают (заметки про PFR не появляются, т.к. модификатор ещё не реализован).
 
 - [ ] **Step 3: Реализовать модификатор в advice.ts (GREEN)**
@@ -674,18 +674,18 @@ function clampPfr(v: number): number {
 
 - [ ] **Step 4: Запустить тесты (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/strategy/advice.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/strategy/advice.test.ts`
 Expected: PASS, все тесты (12 старых + 4 новых = 16).
 
 - [ ] **Step 5: Прогон всех тестов**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test`
 Expected: PASS, ~68 тестов (64 + 4 новых).
 
 - [ ] **Step 6: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/strategy/advice.ts packages/core/src/strategy/advice.test.ts
 git commit -m "feat(core): модификатор порогов совета по PFR активного оппонента"
 ```
@@ -717,13 +717,13 @@ export {
 
 - [ ] **Step 2: Проверить сборку**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm run build 2>&1 | tail -5`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm run build 2>&1 | tail -5`
 Expected: CJS + ESM + DTS без ошибок.
 
 - [ ] **Step 3: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/index.ts
 git commit -m "feat(core): экспорт пресетов игроков и PFR-констант в публичный API"
 ```
@@ -738,17 +738,17 @@ git commit -m "feat(core): экспорт пресетов игроков и PFR
 
 - [ ] **Step 1: Полный прогон тестов**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test`
 Expected: PASS, ~68 тестов. Все 60 существующих + ~8 новых зелёные.
 
 - [ ] **Step 2: Сборка core**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm run build`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm run build`
 Expected: CJS + ESM + DTS без ошибок.
 
 - [ ] **Step 3: Проверить, что app.ts НЕ изменён**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant && git diff apps/app/src/app.ts`
+Run: `cd ~/Projects/poker-assistant && git diff apps/app/src/app.ts`
 Expected: пусто (UI не трогали).
 
 - [ ] **Step 4: Bump версии**
@@ -759,7 +759,7 @@ Expected: пусто (UI не трогали).
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/package.json apps/app/package.json
 git commit -m "chore: bump версии до 1.4.0 — фича профилей (ядро, без UI)
 

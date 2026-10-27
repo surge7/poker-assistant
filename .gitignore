@@ -55,3 +55,7 @@ test-results/
 
 # Отладочные сессии тестирования (скрипты, отчёты)
 test-sessions/
+
+# Local agent/tool plugin markers
+.v2c/
+.video_agent/

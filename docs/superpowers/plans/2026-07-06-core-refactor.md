@@ -15,7 +15,7 @@
 - **`apps/app/src/app.ts` не редактируется**, кроме строки 828 (хардкод `3000/2000` → константы из `config/simulation.ts`).
 - **TDD-дисциплина:** новые тесты пишутся первыми (RED), потом код (GREEN). Перенос существующих тестов — без изменения ассертов.
 - **Частые коммиты:** каждая задача заканчивается коммитом в ветке `release/v1.2`.
-- **Рабочая папка для команд `npm test`/`npm run build`:** `/Users/gpbu25522/Projects/poker-assistant/packages/core` (используйте `cd` в команде, текущая оболочка не сохраняет cwd между вызовами).
+- **Рабочая папка для команд `npm test`/`npm run build`:** `~/Projects/poker-assistant/packages/core` (используйте `cd` в команде, текущая оболочка не сохраняет cwd между вызовами).
 - **Формат карт:** строка `"As"` (ранг+масть), ранги `2-9 T J Q K A`, масти `s h d c` — из `types.ts`.
 - **Список 169 рук** берётся по стандартному Sklansky-style ранжированию (источник: Sklansky «Theory of Poker» / общепринятые чарты). Источник фиксируется комментарием в `hand-rankings.ts`.
 
@@ -128,13 +128,13 @@ export const CONFIDENCE = {
 
 - [ ] **Step 2: Проверить компиляцию**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/packages/core && npx tsc --noEmit`
 Expected: без ошибок (новый файл самодостаточен).
 
 - [ ] **Step 3: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/thresholds.ts
 git commit -m "refactor(core): вынести пороги советов в config/thresholds.ts"
 ```
@@ -174,13 +174,13 @@ export const POSTFLOP_ITERATIONS = 2000;
 
 - [ ] **Step 3: Проверить компиляцию**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/packages/core && npx tsc --noEmit`
 Expected: без ошибок.
 
 - [ ] **Step 4: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/preflop.ts packages/core/src/config/simulation.ts
 git commit -m "refactor(core): вынести префлоп-константы и итерации в config/"
 ```
@@ -236,7 +236,7 @@ describe('hand-rankings (169 рук Sklansky)', () => {
 
 - [ ] **Step 2: Запустить тест, убедиться что падает (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/hand-rankings.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/hand-rankings.test.ts`
 Expected: FAIL — `Cannot find module './hand-rankings'`.
 
 - [ ] **Step 3: Реализовать hand-rankings.ts (GREEN)**
@@ -303,7 +303,7 @@ export function topPercentHands(pct: number): readonly string[] {
 
 - [ ] **Step 4: Запустить тест, убедиться что проходит (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/hand-rankings.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/hand-rankings.test.ts`
 Expected: PASS, 5 тестов зелёные.
 
 Если тест «169 уникальных» падает — в списке дубликаты. Найдите их (например, `grep -o "'[A-Z0-9]*'" hand-rankings.ts | sort | uniq -d`) и удалите дубликаты, добавив недостающие руки в конец списка.
@@ -311,7 +311,7 @@ Expected: PASS, 5 тестов зелёные.
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/hand-rankings.ts packages/core/src/config/hand-rankings.test.ts
 git commit -m "feat(core): config/hand-rankings.ts — 169 рук Sklansky для фичи профилей"
 ```
@@ -366,7 +366,7 @@ describe('vpip-ranges (узлы интерполяции VPIP → % диапаз
 
 - [ ] **Step 2: Запустить тест (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/vpip-ranges.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/vpip-ranges.test.ts`
 Expected: FAIL — `Cannot find module './vpip-ranges'`.
 
 - [ ] **Step 3: Реализовать vpip-ranges.ts (GREEN)**
@@ -389,13 +389,13 @@ export const VPIP_RANGE_NODES: readonly { vpip: number; rangePct: number }[] = [
 
 - [ ] **Step 4: Запустить тест (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/config/vpip-ranges.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/config/vpip-ranges.test.ts`
 Expected: PASS, 4 теста.
 
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/config/vpip-ranges.ts packages/core/src/config/vpip-ranges.test.ts
 git commit -m "feat(core): config/vpip-ranges.ts — узлы VPIP для фичи профилей"
 ```
@@ -446,7 +446,7 @@ describe('players/profiles — raiseFactor (PFR/VPIP)', () => {
 
 - [ ] **Step 2: Запустить тест (RED)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/players/profiles.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/players/profiles.test.ts`
 Expected: FAIL — `Cannot find module './profiles'`.
 
 - [ ] **Step 3: Реализовать profiles.ts (GREEN)**
@@ -488,7 +488,7 @@ export function raiseFactor(stats: PlayerStats): number {
 
 - [ ] **Step 4: Запустить тест (GREEN)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/players/profiles.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/players/profiles.test.ts`
 Expected: PASS, 4 теста.
 
 - [ ] **Step 5: Создать ranges.ts (заглушка statsToRange)**
@@ -533,13 +533,13 @@ function interpolateVpipToRange(vpip: number): number {
 
 - [ ] **Step 6: Проверить компиляцию всех новых файлов**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/packages/core && npx tsc --noEmit`
 Expected: без ошибок.
 
 - [ ] **Step 7: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/players/
 git commit -m "feat(core): слой players/ — типы PlayerStats/Opponent, raiseFactor, заглушка statsToRange"
 ```
@@ -603,13 +603,13 @@ import { getNuts, compareToNuts } from './nuts';
 
 - [ ] **Step 5: Запустить перенесённый тест**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/eval/nuts.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/eval/nuts.test.ts`
 Expected: PASS, 5 тестов.
 
 - [ ] **Step 6: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/eval/
 git commit -m "refactor(core): слой eval/ — перенесены deck, hand-eval, nuts"
 ```
@@ -659,13 +659,13 @@ import type { OutsResult } from '../types';
 
 - [ ] **Step 4: Запустить тесты**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/equity/`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/equity/`
 Expected: PASS, 9 тестов (7 equity + 2 outs).
 
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/equity/
 git commit -m "refactor(core): слой equity/ — перенесены equity, outs"
 ```
@@ -788,18 +788,18 @@ import { PREMIUM_PAIR_MIN_RANK, BROADWAY_MIN_RANK } from '../config/preflop';
 
 - [ ] **Step 6: Проверить компиляцию**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/packages/core && npx tsc --noEmit`
 Expected: без ошибок. Если ошибка про `Opponent` — убедиться что импорт в types.ts правильный.
 
 - [ ] **Step 7: Запустить все тесты strategy/**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/strategy/`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/strategy/`
 Expected: PASS, 21 тест (12 advice + 3 positions + 7 regressions + 4 marginal — но точное число зависит от того, что суммарно; главное — все зелёные).
 
 - [ ] **Step 8: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/strategy/ packages/core/src/types.ts
 git commit -m "refactor(core): слой strategy/ — advice использует config/, positions перенесены"
 ```
@@ -903,16 +903,16 @@ export { VPIP_RANGE_NODES } from './config/vpip-ranges';
 
 - [ ] **Step 3: Проверить сборку app**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm run build 2>&1 | tail -5`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm run build 2>&1 | tail -5`
 Expected: без ошибок, CJS + ESM + DTS собраны.
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/apps/app && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/apps/app && npx tsc --noEmit`
 Expected: без ошибок (app.ts компилируется с новыми импортами).
 
 - [ ] **Step 4: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/index.ts apps/app/src/app.ts
 git commit -m "refactor(core): обновить фасад index.ts и app.ts под слоистую структуру"
 ```
@@ -930,7 +930,7 @@ git commit -m "refactor(core): обновить фасад index.ts и app.ts п
 - [ ] **Step 1: Удалить старые файлы**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/packages/core
+cd ~/Projects/poker-assistant/packages/core
 git rm src/deck.ts src/hand-eval.ts src/nuts.ts src/equity.ts src/outs.ts src/advice.ts src/positions.ts
 git rm src/nuts.test.ts src/equity.test.ts src/outs.test.ts src/advice.test.ts src/positions.test.ts src/regressions.test.ts src/marginal.test.ts
 ```
@@ -955,7 +955,7 @@ Expected: PASS. Все перенесённые тесты в подпапках
 - [ ] **Step 5: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git commit -m "refactor(core): удалить старые файлы из корня src/ — переезд в слои завершён"
 ```
 
@@ -1045,7 +1045,7 @@ describe('слойные зависимости (нет циклов, завис
 
 - [ ] **Step 2: Запустить тест (RED/GREEN — сразу должен пройти, т.к. структура уже корректна)**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test -- src/layer-deps.test.ts`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test -- src/layer-deps.test.ts`
 Expected: PASS, 5 тестов (по одному на слой).
 
 Если падает — где-то нарушено правило зависимостей. Читать сообщение о violation, исправить импорт (например, `eval/` случайно импортирует из `equity/`), перезапустить.
@@ -1053,7 +1053,7 @@ Expected: PASS, 5 тестов (по одному на слой).
 - [ ] **Step 3: Коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/src/layer-deps.test.ts
 git commit -m "test(core): layer-deps.test.ts — статическая проверка слоистых зависимостей"
 ```
@@ -1068,17 +1068,17 @@ git commit -m "test(core): layer-deps.test.ts — статическая про�
 
 - [ ] **Step 1: Полный прогон всех тестов core**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm test`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm test`
 Expected: PASS, ~44 теста (40 перенесённых + 5 layer-deps + 5 hand-rankings + 4 vpip-ranges + 4 profiles — точное число из Tasks 3,4,5,11).
 
 - [ ] **Step 2: Сборка core**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/packages/core && npm run build`
+Run: `cd ~/Projects/poker-assistant/packages/core && npm run build`
 Expected: CJS + ESM + DTS собраны без ошибок.
 
 - [ ] **Step 3: Компиляция app**
 
-Run: `cd /Users/gpbu25522/Projects/poker-assistant/apps/app && npx tsc --noEmit`
+Run: `cd ~/Projects/poker-assistant/apps/app && npx tsc --noEmit`
 Expected: без ошибок.
 
 - [ ] **Step 4: Bump версии до 1.3.0**
@@ -1089,7 +1089,7 @@ Expected: без ошибок.
 - [ ] **Step 5: Финальный коммит**
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant
+cd ~/Projects/poker-assistant
 git add packages/core/package.json apps/app/package.json
 git commit -m "chore: bump версии до 1.3.0 — рефакторинг core завершён
 

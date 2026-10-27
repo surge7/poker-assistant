@@ -43,7 +43,7 @@ npm run build
 В терминале:
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+cd ~/Projects/poker-assistant/apps/app
 npx cap open android
 ```
 
@@ -58,7 +58,7 @@ npx cap open android
 **Если меняли веб-код** — перед запуском в эмуляторе выполните:
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+cd ~/Projects/poker-assistant/apps/app
 npm run build
 npx cap sync android
 ```
@@ -78,7 +78,7 @@ npx cap sync android
 В терминале выполните:
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+cd ~/Projects/poker-assistant/apps/app
 npx cap open android
 ```
 
@@ -118,7 +118,7 @@ APK лежит в папке сборки Android:
 Перед сборкой заново соберите веб и синхронизируйте:
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+cd ~/Projects/poker-assistant/apps/app
 npm run build
 npx cap sync android
 ```

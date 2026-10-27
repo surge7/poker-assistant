@@ -11,7 +11,7 @@
 В терминале (в Cursor: **Terminal → New Terminal**):
 
 ```bash
-cd /Users/gpbu25522/Projects/poker-assistant/apps/app
+cd ~/Projects/poker-assistant/apps/app
 npm run dev
 ```
 
