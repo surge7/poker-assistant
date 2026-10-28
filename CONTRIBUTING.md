@@ -21,7 +21,7 @@ npm run typecheck                    # TypeScript, all workspaces
 npm run lint                         # ESLint
 npm test -w @poker/core -- --coverage
 npm test -w app
-npm run build && npm run test:e2e -w app   # e2e needs a fresh build
+npm run build && npm run build:single-html -w app && npm run test:e2e -w app  # e2e serves dist/ and poker-assistant.html
 ```
 
 CI runs the same jobs (plus an Android debug APK build) on every PR, and it

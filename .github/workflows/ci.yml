@@ -55,6 +55,9 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      # tsc разрешает @poker/core через package exports -> dist/*.d.ts,
+      # поэтому ядро нужно собрать до проверки типов приложения.
+      - run: npm run build:core
       # tsup/vite/esbuild НЕ проверяют типы — этот job единственная защита.
       - run: npm run typecheck
 
@@ -132,6 +135,11 @@ jobs:
       # Порядок рабочих пространств: packages/*, затем apps/*.
       - name: Build (core + app)
         run: npm run build
+
+      # single-html.spec.ts обслуживает poker-assistant.html отдельным
+      # static-сервером — файл собирается отдельным скриптом.
+      - name: Build single-HTML (portable)
+        run: npm run build:single-html -w app
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

@@ -46,7 +46,7 @@ npm test -w @poker/core -- --coverage   # core unit tests + coverage thresholds
 npm test -w app                        # app unit tests (happy-dom)
 npm run typecheck                      # tsc --noEmit for all workspaces
 npm run lint                           # ESLint 9
-npm run build                          # build core + app first (e2e needs dist/)
+npm run build && npm run build:single-html -w app  # e2e serves dist/ and poker-assistant.html
 npm run test:e2e -w app                # Playwright e2e (chromium, Pixel 5)
 ```
 
